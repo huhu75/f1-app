@@ -1,26 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, AlertCircle } from "lucide-react";
+import { teams2026, getNextRace, formatCountdown } from "@/lib/f1-data";
 
 export default function Pronostics() {
-  const teams = [
-    { name: "Red Bull Ford", drivers: ["Max Verstappen", "Liam Lawson"] },
-    { name: "Mercedes", drivers: ["George Russell", "Kimi Antonelli"] },
-    { name: "Ferrari", drivers: ["Charles Leclerc", "Lewis Hamilton"] },
-    { name: "McLaren Mercedes", drivers: ["Lando Norris", "Oscar Piastri"] },
-    { name: "Aston Martin Honda", drivers: ["Fernando Alonso", "Lance Stroll"] },
-    { name: "Alpine", drivers: ["Pierre Gasly", "Jack Doohan"] },
-    { name: "Williams", drivers: ["Alex Albon", "Carlos Sainz"] },
-    { name: "Racing Bulls", drivers: ["Yuki Tsunoda", "Isack Hadjar"] },
-    { name: "Audi", drivers: ["Nico Hülkenberg", "Gabriel Bortoleto"] },
-    { name: "Haas Ferrari", drivers: ["Esteban Ocon", "Oliver Bearman"] },
-  ];
-
-  const positions = Array.from({ length: 10 }, (_, i) => i); // 0 to 9 for array index
+  const positions = Array.from({ length: 10 }, (_, i) => i);
 
   const [qualiSelections, setQualiSelections] = useState<string[]>(Array(10).fill(""));
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
+  
+  const [nextRace, setNextRace] = useState<any>(null);
+  const [countdown, setCountdown] = useState<string>("");
+
+  useEffect(() => {
+    const race = getNextRace();
+    setNextRace(race);
+    
+    // Initialiser le compte à rebours
+    setCountdown(formatCountdown(race.startDate));
+    
+    // Mettre à jour toutes les minutes
+    const interval = setInterval(() => {
+      setCountdown(formatCountdown(race.startDate));
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleQualiChange = (index: number, value: string) => {
     const newSelections = [...qualiSelections];
@@ -34,16 +40,18 @@ export default function Pronostics() {
     setRaceSelections(newSelections);
   };
 
+  if (!nextRace) return null; // ou un loader
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-24 text-black bg-white">
       <section className="border-b border-gray-200 pb-6">
         <h1 className="text-3xl font-bold tracking-tight mb-2 uppercase text-black">Saisie des Pronostics</h1>
-        <p className="text-gray-500">Grand Prix de Melbourne 2026</p>
+        <p className="text-gray-500">{nextRace.name} ({nextRace.dateString})</p>
       </section>
 
       <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
         <AlertCircle className="w-5 h-5 shrink-0 text-gray-500" />
-        <p>Fin des pronostics dans : <span className="font-bold text-black">2 jours, 04:22:10</span> (Début Q1)</p>
+        <p>Fin des pronostics dans : <span className="font-bold text-black">{countdown}</span> (Début Q1 estimé)</p>
       </div>
 
       <form className="space-y-10">
@@ -66,7 +74,7 @@ export default function Pronostics() {
                     className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
                   >
                     <option value="">Choisir un pilote...</option>
-                    {teams.map((team) => (
+                    {teams2026.map((team) => (
                       <optgroup key={team.name} label={team.name}>
                         {team.drivers.map(driver => (
                           <option 
@@ -100,7 +108,7 @@ export default function Pronostics() {
                     className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
                   >
                     <option value="">Choisir un pilote...</option>
-                    {teams.map((team) => (
+                    {teams2026.map((team) => (
                       <optgroup key={team.name} label={team.name}>
                         {team.drivers.map(driver => (
                           <option 

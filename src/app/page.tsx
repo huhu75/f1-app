@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Trophy, Calendar, Flag, TrendingUp } from "lucide-react";
+import { getNextRace, formatCountdown } from "@/lib/f1-data";
 
 export default function Dashboard() {
   // Mock data for the 2026 season
@@ -11,12 +13,20 @@ export default function Dashboard() {
     { name: "Ami 3", points: 94, trend: "up" },
   ];
 
-  const nextRace = {
-    name: "Grand Prix de Melbourne",
-    location: "Albert Park, Australie",
-    date: "15 Mars 2026",
-    countdown: "12 jours, 04:22:10"
-  };
+  const [nextRace, setNextRace] = useState<any>(null);
+  const [countdown, setCountdown] = useState<string>("");
+
+  useEffect(() => {
+    const race = getNextRace();
+    setNextRace(race);
+    setCountdown(formatCountdown(race.startDate));
+    
+    const interval = setInterval(() => {
+      setCountdown(formatCountdown(race.startDate));
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-10 text-black bg-white">
@@ -54,27 +64,29 @@ export default function Dashboard() {
         </div>
 
         {/* Next Race Card */}
-        <div className="card-minimal p-6 border-l-4 border-black">
+        <div className="card-minimal p-6 border-l-4 border-black flex flex-col justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2 mb-6 text-black">
             <Calendar className="w-5 h-5 text-gray-700" />
             Prochaine Course
           </h2>
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-500 uppercase tracking-widest font-bold mb-1">Évènement</div>
-              <div className="text-xl font-bold text-black">{nextRace.name}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 uppercase tracking-widest font-bold mb-1">Lieu</div>
-              <div className="text-gray-700">{nextRace.location}</div>
-            </div>
-            <div className="pt-4 border-t border-gray-200">
-              <div className="text-xs text-gray-500 uppercase font-bold mb-2">Compte à rebours</div>
-              <div className="text-2xl font-mono text-black tracking-tighter">
-                {nextRace.countdown}
+          
+          {nextRace ? (
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm text-gray-500 uppercase tracking-widest font-bold mb-1">Rnd {nextRace.round}</div>
+                <div className="text-xl font-bold text-black leading-tight">{nextRace.name}</div>
+                <div className="text-gray-700 mt-1">{nextRace.dateString}</div>
+              </div>
+              <div className="pt-4 border-t border-gray-200">
+                <div className="text-xs text-gray-500 uppercase font-bold mb-2">Début estimé</div>
+                <div className="text-xl font-mono text-black tracking-tighter">
+                  {countdown}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-gray-500">Chargement...</div>
+          )}
         </div>
       </div>
 
@@ -82,22 +94,22 @@ export default function Dashboard() {
       <section className="card-minimal p-6">
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-6 text-black">
           <Flag className="w-5 h-5 text-gray-700" />
-          Derniers Résultats (GP de Bahreïn)
+          Derniers Résultats
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-1">Vainqueur</div>
-            <div className="font-bold text-black">Max Verstappen</div>
-            <div className="text-xs text-gray-600 mt-1">Écurie : Red Bull</div>
+            <div className="font-bold text-black">En attente</div>
+            <div className="text-xs text-gray-600 mt-1">-</div>
           </div>
           <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-1">Pole Position</div>
-            <div className="font-bold text-black">Charles Leclerc</div>
-            <div className="text-xs text-gray-600 mt-1">Écurie : Ferrari</div>
+            <div className="font-bold text-black">En attente</div>
+            <div className="text-xs text-gray-600 mt-1">-</div>
           </div>
           <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-1">Meilleur Joueur</div>
-            <div className="font-bold text-black">Hugo (+25 pts)</div>
+            <div className="font-bold text-black">-</div>
           </div>
         </div>
       </section>
