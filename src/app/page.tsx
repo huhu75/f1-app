@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp } from "lucide-react";
+import { Trophy, Calendar, Flag, TrendingUp, Info } from "lucide-react";
 import { getNextRace, formatCountdown } from "@/lib/f1-data";
+import { storageService, Prediction } from "@/lib/storage";
 
 export default function Dashboard() {
   // Mock data for the 2026 season
@@ -15,11 +16,20 @@ export default function Dashboard() {
 
   const [nextRace, setNextRace] = useState<any>(null);
   const [countdown, setCountdown] = useState<string>("");
+  const [userPredictions, setUserPredictions] = useState<Prediction | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const race = getNextRace();
     setNextRace(race);
     setCountdown(formatCountdown(race.startDate));
+    
+    const loadPredictions = async () => {
+      const saved = await storageService.getPredictions();
+      setUserPredictions(saved);
+      setIsLoading(false);
+    };
+    loadPredictions();
     
     const interval = setInterval(() => {
       setCountdown(formatCountdown(race.startDate));
@@ -90,28 +100,64 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Last Results Summary */}
+      {/* Last Results Summary / User Predictions */}
       <section className="card-minimal p-6">
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-6 text-black">
           <Flag className="w-5 h-5 text-gray-700" />
-          Derniers Résultats
+          {userPredictions ? `Vos Pronostics - ${nextRace?.name}` : "Derniers Résultats"}
         </h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
-            <div className="text-xs text-gray-500 uppercase mb-1">Vainqueur</div>
-            <div className="font-bold text-black">En attente</div>
-            <div className="text-xs text-gray-600 mt-1">-</div>
+        
+        {userPredictions ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Qualifications (Top 3)</h3>
+              <div className="space-y-2">
+                {userPredictions.qualiPositions.slice(0, 3).map((driver, i) => (
+                  <div key={`dash-quali-${i}`} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
+                    <span className="font-mono text-gray-400 text-xs">P{i+1}</span>
+                    <span className="text-sm font-medium">{driver || "Non sélectionné"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Course (Top 3)</h3>
+              <div className="space-y-2">
+                {userPredictions.racePositions.slice(0, 3).map((driver, i) => (
+                  <div key={`dash-race-${i}`} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
+                    <span className="font-mono text-gray-400 text-xs">P{i+1}</span>
+                    <span className="text-sm font-medium">{driver || "Non sélectionné"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {userPredictions.specialBet && (
+              <div className="md:col-span-2 mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+                <div className="text-xs text-gray-400 uppercase font-bold mb-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  Pari Spécial
+                </div>
+                <p className="text-sm italic text-gray-700">"{userPredictions.specialBet}"</p>
+              </div>
+            )}
           </div>
-          <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
-            <div className="text-xs text-gray-500 uppercase mb-1">Pole Position</div>
-            <div className="font-bold text-black">En attente</div>
-            <div className="text-xs text-gray-600 mt-1">-</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
+              <div className="text-xs text-gray-500 uppercase mb-1">Vainqueur</div>
+              <div className="font-bold text-black">En attente</div>
+              <div className="text-xs text-gray-600 mt-1">-</div>
+            </div>
+            <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
+              <div className="text-xs text-gray-500 uppercase mb-1">Pole Position</div>
+              <div className="font-bold text-black">En attente</div>
+              <div className="text-xs text-gray-600 mt-1">-</div>
+            </div>
+            <div className="p-4 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center">
+              <div className="text-xs text-gray-400 italic">Aucun pronostic enregistré</div>
+            </div>
           </div>
-          <div className="p-4 rounded-md bg-gray-50 border border-gray-200">
-            <div className="text-xs text-gray-500 uppercase mb-1">Meilleur Joueur</div>
-            <div className="font-bold text-black">-</div>
-          </div>
-        </div>
+        )}
       </section>
     </div>
   );

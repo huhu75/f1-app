@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, AlertCircle } from "lucide-react";
+import { Save, AlertCircle, Check, Loader2 } from "lucide-react";
 import { teams2026, getNextRace, formatCountdown } from "@/lib/f1-data";
+import { storageService } from "@/lib/storage";
 
 export default function Pronostics() {
   const positions = Array.from({ length: 10 }, (_, i) => i);
@@ -12,15 +13,26 @@ export default function Pronostics() {
   
   const [nextRace, setNextRace] = useState<any>(null);
   const [countdown, setCountdown] = useState<string>("");
+  const [specialBet, setSpecialBet] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     const race = getNextRace();
     setNextRace(race);
-    
-    // Initialiser le compte à rebours
     setCountdown(formatCountdown(race.startDate));
     
-    // Mettre à jour toutes les minutes
+    // Charger les pronostics existants
+    const loadData = async () => {
+      const saved = await storageService.getPredictions();
+      if (saved) {
+        setQualiSelections(saved.qualiPositions);
+        setRaceSelections(saved.racePositions);
+        setSpecialBet(saved.specialBet);
+      }
+    };
+    loadData();
+    
     const interval = setInterval(() => {
       setCountdown(formatCountdown(race.startDate));
     }, 60000);
@@ -38,6 +50,25 @@ export default function Pronostics() {
     const newSelections = [...raceSelections];
     newSelections[index] = value;
     setRaceSelections(newSelections);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await storageService.savePredictions({
+        qualiPositions: qualiSelections,
+        racePositions: raceSelections,
+        specialBet: specialBet,
+        updatedAt: new Date().toISOString()
+      });
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la sauvegarde");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!nextRace) return null; // ou un loader
@@ -139,6 +170,8 @@ export default function Pronostics() {
               Votre pari libre (ex: "Abandon de Verstappen", "Pluie au 20ème tour")
             </label>
             <textarea 
+              value={specialBet}
+              onChange={(e) => setSpecialBet(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-md p-4 min-h-[100px] text-sm focus:ring-2 focus:ring-black outline-none resize-none transition-colors hover:border-gray-400 text-black"
               placeholder="Écrivez votre pari ici..."
             />
@@ -146,10 +179,30 @@ export default function Pronostics() {
         </section>
 
         {/* BOUTON ENREGISTRER */}
-        <div className="pt-4 flex justify-end">
-          <button type="button" className="w-full md:w-auto h-12 px-8 text-base bg-black text-white hover:bg-gray-800 rounded-md font-bold uppercase tracking-wider transition-colors flex items-center justify-center">
-            <Save className="w-5 h-5 mr-2" />
-            Enregistrer mes pronostics
+        <div className="pt-4 flex flex-col items-end gap-3">
+          {showSuccess && (
+            <div className="flex items-center gap-2 text-green-600 font-bold text-sm animate-in fade-in slide-in-from-right-4">
+              <Check className="w-4 h-4" />
+              Pronostics enregistrés avec succès !
+            </div>
+          )}
+          <button 
+            type="button" 
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`w-full md:w-auto h-12 px-8 text-base bg-black text-white hover:bg-gray-800 rounded-md font-bold uppercase tracking-wider transition-all flex items-center justify-center ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Enregistrer mes pronostics
+              </>
+            )}
           </button>
         </div>
       </form>
