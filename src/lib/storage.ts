@@ -1,3 +1,5 @@
+import { calendar2026 } from "./f1-data";
+
 /**
  * Service de stockage pour les pronostics.
  * Actuellement utilise le localStorage, mais conçu pour être migré vers Supabase.
