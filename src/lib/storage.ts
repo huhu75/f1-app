@@ -41,7 +41,7 @@ export interface DashboardInsights {
 
 const PREDICTIONS_KEY = 'f1_2026_all_predictions';
 const RESULTS_KEY = 'f1_2026_results';
-const PLAYERS = ["Hugo", "Ami 1", "Ami 2", "Ami 3"];
+const PLAYERS = ["Hugo", "François", "Carole"];
 
 export const storageService = {
   async savePrediction(prediction: Omit<Prediction, 'editCount' | 'history'>): Promise<void> {
