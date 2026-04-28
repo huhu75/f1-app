@@ -3,6 +3,14 @@
  * Actuellement utilise le localStorage, mais conçu pour être migré vers Supabase.
  */
 
+export interface PredictionHistory {
+  timestamp: string;
+  editCount: number;
+  qualiPositions: string[];
+  racePositions: string[];
+  specialBet: string;
+}
+
 export interface Prediction {
   round: number;
   playerName: string;
@@ -11,6 +19,8 @@ export interface Prediction {
   specialBet: string;
   betWon?: boolean;
   updatedAt: string;
+  editCount: number;
+  history: PredictionHistory[];
 }
 
 export interface RaceResult {
@@ -31,14 +41,31 @@ const RESULTS_KEY = 'f1_2026_results';
 const PLAYERS = ["Hugo", "Ami 1", "Ami 2", "Ami 3"];
 
 export const storageService = {
-  async savePrediction(prediction: Prediction): Promise<void> {
+  async savePrediction(prediction: Omit<Prediction, 'editCount' | 'history'>): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 300));
     if (typeof window === 'undefined') return;
 
     const all = await this.getAllPredictions();
     if (!all[prediction.round]) all[prediction.round] = {};
-    all[prediction.round][prediction.playerName] = prediction;
+    
+    const existing = all[prediction.round][prediction.playerName];
+    
+    // Logic for history and edit count
+    const newHistory: PredictionHistory = {
+      timestamp: new Date().toISOString(),
+      editCount: (existing?.editCount || 0) + 1,
+      qualiPositions: [...prediction.qualiPositions],
+      racePositions: [...prediction.racePositions],
+      specialBet: prediction.specialBet
+    };
 
+    const finalPrediction: Prediction = {
+      ...prediction,
+      editCount: (existing?.editCount || 0) + 1,
+      history: existing?.history ? [...existing.history, newHistory] : [newHistory]
+    };
+
+    all[prediction.round][prediction.playerName] = finalPrediction;
     localStorage.setItem(PREDICTIONS_KEY, JSON.stringify(all));
   },
 

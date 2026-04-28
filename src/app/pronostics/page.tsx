@@ -13,6 +13,10 @@ export default function Pronostics() {
   
   const [nextRace, setNextRace] = useState<any>(null);
   const [selectedRound, setSelectedRound] = useState<number>(1);
+  const [currentPlayer, setCurrentPlayer] = useState<string>("Hugo");
+  const [predictionHistory, setPredictionHistory] = useState<any[]>([]);
+  const [editCount, setEditCount] = useState<number>(0);
+  const [showHistory, setShowHistory] = useState(false);
   const [countdown, setCountdown] = useState<string>("");
   const [specialBet, setSpecialBet] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -32,22 +36,26 @@ export default function Pronostics() {
   }, []);
 
   useEffect(() => {
-    // Charger les pronostics existants quand le round change
+    // Charger les pronostics existants quand le round ou le joueur change
     const loadData = async () => {
       const all = await storageService.getAllPredictions();
-      const saved = all[selectedRound]?.["Hugo"]; // Default to Hugo for now
+      const saved = all[selectedRound]?.[currentPlayer];
       if (saved) {
         setQualiSelections(saved.qualiPositions);
         setRaceSelections(saved.racePositions);
         setSpecialBet(saved.specialBet);
+        setEditCount(saved.editCount || 0);
+        setPredictionHistory(saved.history || []);
       } else {
         setQualiSelections(Array(10).fill(""));
         setRaceSelections(Array(10).fill(""));
         setSpecialBet("");
+        setEditCount(0);
+        setPredictionHistory([]);
       }
     };
     loadData();
-  }, [selectedRound]);
+  }, [selectedRound, currentPlayer]);
 
   const handleQualiChange = (index: number, value: string) => {
     const newSelections = [...qualiSelections];
@@ -66,13 +74,20 @@ export default function Pronostics() {
     try {
       await storageService.savePrediction({
         round: selectedRound,
-        playerName: "Hugo", // Default for now
+        playerName: currentPlayer,
         qualiPositions: qualiSelections,
         racePositions: raceSelections,
         specialBet: specialBet,
         updatedAt: new Date().toISOString()
       });
       setShowSuccess(true);
+      // Refresh local history info
+      const all = await storageService.getAllPredictions();
+      const saved = all[selectedRound]?.[currentPlayer];
+      if (saved) {
+        setEditCount(saved.editCount);
+        setPredictionHistory(saved.history || []);
+      }
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
       console.error(e);
@@ -87,25 +102,70 @@ export default function Pronostics() {
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-24 text-black bg-white">
       <section className="border-b border-gray-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight mb-2 uppercase text-black">Saisie des Pronostics</h1>
-          <p className="text-gray-500">Prédisez les résultats et gagnez des points.</p>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Joueur</label>
+              <select 
+                value={currentPlayer}
+                onChange={(e) => setCurrentPlayer(e.target.value)}
+                className="w-full bg-black text-white rounded-md h-12 px-4 text-sm font-bold outline-none border-none transition-all hover:bg-gray-800"
+              >
+                {["Hugo", "Ami 1", "Ami 2", "Ami 3"].map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Grand Prix</label>
+              <select 
+                value={selectedRound}
+                onChange={(e) => setSelectedRound(parseInt(e.target.value))}
+                className="w-full bg-white border border-gray-300 rounded-md h-12 px-4 text-sm font-bold focus:ring-2 focus:ring-black outline-none transition-all text-black"
+              >
+                {calendar2026.map(r => (
+                  <option key={r.round} value={r.round}>
+                    Round {r.round}: {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
-        <div className="w-full md:w-64">
-          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Grand Prix</label>
-          <select 
-            value={selectedRound}
-            onChange={(e) => setSelectedRound(parseInt(e.target.value))}
-            className="w-full bg-white border border-gray-300 rounded-md h-12 px-4 text-sm font-bold focus:ring-2 focus:ring-black outline-none transition-all text-black"
-          >
-            {calendar2026.map(r => (
-              <option key={r.round} value={r.round}>
-                Round {r.round}: {r.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        
+        {editCount > 0 && (
+          <div className="flex flex-col items-end">
+            <button 
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black flex items-center gap-1"
+            >
+              {editCount} modification{editCount > 1 ? 's' : ''} • Voir historique
+            </button>
+          </div>
+        )}
       </section>
+
+      {showHistory && (
+        <section className="p-6 bg-gray-50 rounded-lg border border-gray-200 animate-in fade-in slide-in-from-top-2">
+          <h2 className="text-xs font-black uppercase tracking-widest text-black mb-4">Historique des modifications</h2>
+          <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+            {[...predictionHistory].reverse().map((h, i) => (
+              <div key={i} className="text-xs p-3 bg-white border border-gray-100 rounded-md flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-gray-900">Modif #{h.editCount}</span>
+                  <span className="mx-2 text-gray-300">|</span>
+                  <span className="text-gray-500 italic">Pari: "{h.specialBet || 'N/A'}"</span>
+                </div>
+                <div className="text-gray-400 font-mono">
+                  {new Date(h.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
         <AlertCircle className="w-5 h-5 shrink-0 text-gray-500" />
