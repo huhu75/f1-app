@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Save, AlertCircle, Check, Loader2 } from "lucide-react";
-import { teams2026, getNextRace, formatCountdown } from "@/lib/f1-data";
+import { teams2026, getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService } from "@/lib/storage";
 
 export default function Pronostics() {
@@ -12,6 +12,7 @@ export default function Pronostics() {
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
   
   const [nextRace, setNextRace] = useState<any>(null);
+  const [selectedRound, setSelectedRound] = useState<number>(1);
   const [countdown, setCountdown] = useState<string>("");
   const [specialBet, setSpecialBet] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -20,18 +21,8 @@ export default function Pronostics() {
   useEffect(() => {
     const race = getNextRace();
     setNextRace(race);
+    setSelectedRound(race.round);
     setCountdown(formatCountdown(race.startDate));
-    
-    // Charger les pronostics existants
-    const loadData = async () => {
-      const saved = await storageService.getPredictions();
-      if (saved) {
-        setQualiSelections(saved.qualiPositions);
-        setRaceSelections(saved.racePositions);
-        setSpecialBet(saved.specialBet);
-      }
-    };
-    loadData();
     
     const interval = setInterval(() => {
       setCountdown(formatCountdown(race.startDate));
@@ -39,6 +30,24 @@ export default function Pronostics() {
     
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    // Charger les pronostics existants quand le round change
+    const loadData = async () => {
+      const all = await storageService.getAllPredictions();
+      const saved = all[selectedRound]?.["Hugo"]; // Default to Hugo for now
+      if (saved) {
+        setQualiSelections(saved.qualiPositions);
+        setRaceSelections(saved.racePositions);
+        setSpecialBet(saved.specialBet);
+      } else {
+        setQualiSelections(Array(10).fill(""));
+        setRaceSelections(Array(10).fill(""));
+        setSpecialBet("");
+      }
+    };
+    loadData();
+  }, [selectedRound]);
 
   const handleQualiChange = (index: number, value: string) => {
     const newSelections = [...qualiSelections];
@@ -55,7 +64,9 @@ export default function Pronostics() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await storageService.savePredictions({
+      await storageService.savePrediction({
+        round: selectedRound,
+        playerName: "Hugo", // Default for now
         qualiPositions: qualiSelections,
         racePositions: raceSelections,
         specialBet: specialBet,
@@ -75,14 +86,36 @@ export default function Pronostics() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-24 text-black bg-white">
-      <section className="border-b border-gray-200 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 uppercase text-black">Saisie des Pronostics</h1>
-        <p className="text-gray-500">{nextRace.name} ({nextRace.dateString})</p>
+      <section className="border-b border-gray-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 uppercase text-black">Saisie des Pronostics</h1>
+          <p className="text-gray-500">Prédisez les résultats et gagnez des points.</p>
+        </div>
+        <div className="w-full md:w-64">
+          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Grand Prix</label>
+          <select 
+            value={selectedRound}
+            onChange={(e) => setSelectedRound(parseInt(e.target.value))}
+            className="w-full bg-white border border-gray-300 rounded-md h-12 px-4 text-sm font-bold focus:ring-2 focus:ring-black outline-none transition-all text-black"
+          >
+            {calendar2026.map(r => (
+              <option key={r.round} value={r.round}>
+                Round {r.round}: {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </section>
 
       <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
         <AlertCircle className="w-5 h-5 shrink-0 text-gray-500" />
-        <p>Fin des pronostics dans : <span className="font-bold text-black">{countdown}</span> (Début Q1 estimé)</p>
+        <p>
+          {selectedRound === nextRace.round ? (
+            <>Fin des pronostics dans : <span className="font-bold text-black">{countdown}</span> (Début Q1 estimé)</>
+          ) : (
+            <>Vous modifiez les pronostics pour un autre Grand Prix.</>
+          )}
+        </p>
       </div>
 
       <form className="space-y-10">
