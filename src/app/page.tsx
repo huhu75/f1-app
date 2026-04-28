@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award } from "lucide-react";
+import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2 } from "lucide-react";
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
-import { storageService, Prediction, DashboardInsights, RaceResult } from "@/lib/storage";
+import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
