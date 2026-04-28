@@ -72,7 +72,8 @@ export default function Dashboard() {
 
   // Format chart data
   const chartData = seasonProgress?.rounds.map((round, idx) => {
-    const data: any = { name: `R${round}` };
+    const gpName = calendar2026.find(r => r.round === round)?.name || `R${round}`;
+    const data: any = { name: gpName };
     seasonProgress.players.forEach(p => {
       data[p.name] = p.cumulative[idx];
     });
@@ -195,8 +196,12 @@ export default function Dashboard() {
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fontSize: 10, fill: '#94a3b8'}} 
+                tick={{fontSize: 9, fill: '#94a3b8'}} 
                 dy={10}
+                interval={0}
+                angle={-25}
+                textAnchor="end"
+                height={60}
               />
               <YAxis 
                 axisLine={false} 
@@ -236,9 +241,14 @@ export default function Dashboard() {
             <thead>
               <tr className="bg-slate-50/50">
                 <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 min-w-[140px]">Joueur</th>
-                {seasonProgress?.rounds.map(r => (
-                  <th key={`head-${r}`} className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center min-w-[50px]">R{r}</th>
-                ))}
+                {seasonProgress?.rounds.map(r => {
+                  const name = calendar2026.find(c => c.round === r)?.name.split(' ').pop();
+                  return (
+                    <th key={`head-${r}`} className="p-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center min-w-[80px]">
+                      {name}
+                    </th>
+                  );
+                })}
                 <th className="p-4 text-[10px] font-bold text-slate-900 uppercase tracking-widest border-b border-slate-100 text-center bg-slate-100/50">Total</th>
               </tr>
             </thead>
