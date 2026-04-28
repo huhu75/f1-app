@@ -9,6 +9,7 @@ export interface PredictionHistory {
   qualiPositions: string[];
   racePositions: string[];
   specialBet: string;
+  changes: string; // Summary of what changed
 }
 
 export interface Prediction {
@@ -50,13 +51,26 @@ export const storageService = {
     
     const existing = all[prediction.round][prediction.playerName];
     
+    // Calculate changes summary
+    let changes = "Initiale";
+    if (existing) {
+      const diffs: string[] = [];
+      const qDiff = prediction.qualiPositions.filter((p, i) => p !== existing.qualiPositions[i]).length;
+      const rDiff = prediction.racePositions.filter((p, i) => p !== existing.racePositions[i]).length;
+      if (qDiff > 0) diffs.push(`${qDiff} quali`);
+      if (rDiff > 0) diffs.push(`${rDiff} course`);
+      if (prediction.specialBet !== existing.specialBet) diffs.push(`pari`);
+      changes = diffs.length > 0 ? diffs.join(", ") : "Pas de changement";
+    }
+
     // Logic for history and edit count
     const newHistory: PredictionHistory = {
       timestamp: new Date().toISOString(),
       editCount: (existing?.editCount || 0) + 1,
       qualiPositions: [...prediction.qualiPositions],
       racePositions: [...prediction.racePositions],
-      specialBet: prediction.specialBet
+      specialBet: prediction.specialBet,
+      changes: changes
     };
 
     const finalPrediction: Prediction = {

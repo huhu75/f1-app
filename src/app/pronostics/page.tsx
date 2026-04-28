@@ -153,10 +153,11 @@ export default function Pronostics() {
           <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
             {[...predictionHistory].reverse().map((h, i) => (
               <div key={i} className="text-xs p-3 bg-white border border-gray-100 rounded-md flex justify-between items-center">
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-900">Modif #{h.editCount}</span>
-                  <span className="mx-2 text-gray-300">|</span>
-                  <span className="text-gray-500 italic">Pari: "{h.specialBet || 'N/A'}"</span>
+                  <span className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-black uppercase tracking-widest text-gray-500">
+                    {h.changes}
+                  </span>
                 </div>
                 <div className="text-gray-400 font-mono">
                   {new Date(h.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -192,26 +193,37 @@ export default function Pronostics() {
               {positions.map((index) => (
                 <div key={`quali-${index}`} className="flex items-center gap-3">
                   <span className="w-8 text-gray-500 font-mono font-bold text-right">P{index + 1}</span>
-                  <select 
-                    value={qualiSelections[index]}
-                    onChange={(e) => handleQualiChange(index, e.target.value)}
-                    className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
-                  >
-                    <option value="">Choisir un pilote...</option>
-                    {teams2026.map((team) => (
-                      <optgroup key={team.name} label={team.name}>
-                        {team.drivers.map(driver => (
-                          <option 
-                            key={driver} 
-                            value={driver}
-                            disabled={qualiSelections.includes(driver) && qualiSelections[index] !== driver}
-                          >
-                            {driver}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  <div className="flex-1 flex items-center gap-2">
+                    <select 
+                      value={qualiSelections[index]}
+                      onChange={(e) => handleQualiChange(index, e.target.value)}
+                      className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
+                    >
+                      <option value="">Choisir un pilote...</option>
+                      {teams2026.map((team) => (
+                        <optgroup key={team.name} label={team.name}>
+                          {team.drivers.map(driver => (
+                            <option 
+                              key={driver} 
+                              value={driver}
+                              disabled={qualiSelections.includes(driver) && qualiSelections[index] !== driver}
+                            >
+                              {driver}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {qualiSelections[index] && (
+                      <button 
+                        type="button"
+                        onClick={() => handleQualiChange(index, "")}
+                        className="w-8 h-10 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -226,26 +238,37 @@ export default function Pronostics() {
               {positions.map((index) => (
                 <div key={`race-${index}`} className="flex items-center gap-3">
                   <span className="w-8 text-gray-500 font-mono font-bold text-right">P{index + 1}</span>
-                  <select 
-                    value={raceSelections[index]}
-                    onChange={(e) => handleRaceChange(index, e.target.value)}
-                    className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
-                  >
-                    <option value="">Choisir un pilote...</option>
-                    {teams2026.map((team) => (
-                      <optgroup key={team.name} label={team.name}>
-                        {team.drivers.map(driver => (
-                          <option 
-                            key={driver} 
-                            value={driver}
-                            disabled={raceSelections.includes(driver) && raceSelections[index] !== driver}
-                          >
-                            {driver}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  <div className="flex-1 flex items-center gap-2">
+                    <select 
+                      value={raceSelections[index]}
+                      onChange={(e) => handleRaceChange(index, e.target.value)}
+                      className="flex-1 bg-white border border-gray-300 rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-black outline-none transition-colors hover:border-gray-400 text-black"
+                    >
+                      <option value="">Choisir un pilote...</option>
+                      {teams2026.map((team) => (
+                        <optgroup key={team.name} label={team.name}>
+                          {team.drivers.map(driver => (
+                            <option 
+                              key={driver} 
+                              value={driver}
+                              disabled={raceSelections.includes(driver) && raceSelections[index] !== driver}
+                            >
+                              {driver}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {raceSelections[index] && (
+                      <button 
+                        type="button"
+                        onClick={() => handleRaceChange(index, "")}
+                        className="w-8 h-10 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

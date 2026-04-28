@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft } from "lucide-react";
+import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award } from "lucide-react";
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService, Prediction, DashboardInsights, RaceResult } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
@@ -14,7 +14,6 @@ export default function Dashboard() {
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // GP Viewer State
   const [viewerRound, setViewerRound] = useState(1);
   const [viewerPredictions, setViewerPredictions] = useState<Record<string, Prediction>>({});
   const [viewerResult, setViewerResult] = useState<RaceResult | null>(null);
@@ -31,14 +30,12 @@ export default function Dashboard() {
     setStandings(leaderboard);
     setInsights(stats);
     
-    // Default viewer to last finished round or current round
     const roundsWithResults = Object.keys(allResults).map(Number);
     const lastRound = roundsWithResults.length > 0 ? Math.max(...roundsWithResults) : 1;
     setViewerRound(lastRound);
     setViewerPredictions(allPreds[lastRound] || {});
     setViewerResult(allResults[lastRound] || null);
 
-    // Get current user (Hugo) predictions for NEXT race
     const nextR = getNextRace();
     setNextRace(nextR);
     setCountdown(formatCountdown(nextR.startDate));
@@ -56,7 +53,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update viewer data when round changes
   useEffect(() => {
     const updateViewer = async () => {
       const allPreds = await storageService.getAllPredictions();
@@ -68,45 +64,47 @@ export default function Dashboard() {
   }, [viewerRound]);
 
   return (
-    <div className="space-y-10 text-black bg-white pb-20">
+    <div className="space-y-12 text-slate-900 bg-slate-50/30 pb-20 max-w-6xl mx-auto px-4 sm:px-6">
       {/* Header Section */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-10">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter mb-2 uppercase text-black italic">Dashboard</h1>
-          <p className="text-gray-500 font-medium">Saison F1 2026 • Championnat entre Amis</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 text-sm font-medium">Saison F1 2026 • Championnat entre Amis</p>
         </div>
-        <div className="flex gap-2">
-          <div className="px-4 py-2 bg-gray-100 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 border border-gray-200">
-            {calendar2026.length} Grands Prix
-          </div>
-          <div className="px-4 py-2 bg-black rounded-full text-xs font-bold uppercase tracking-widest text-white">
+        <div className="flex items-center gap-3">
+          <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 shadow-sm">
+            {calendar2026.length} GP
+          </span>
+          <span className="px-3 py-1.5 bg-slate-900 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-slate-200">
             4 Joueurs
-          </div>
+          </span>
         </div>
-      </section>
+      </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Standings Card */}
-        <div className="card-minimal p-6 lg:col-span-2 flex flex-col">
+        <div className="card-minimal p-6 lg:col-span-2 flex flex-col bg-white border-slate-200/60 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold flex items-center gap-3 text-black italic uppercase">
-              <Trophy className="w-6 h-6 text-yellow-500" />
+            <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
+              <Trophy className="w-4 h-4 text-amber-500" />
               Classement Général
             </h2>
           </div>
-          <div className="space-y-3 flex-1">
+          <div className="space-y-2.5 flex-1">
             {standings.map((player, index) => (
-              <div key={player.name} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${index === 0 ? 'bg-black text-white border-black scale-[1.02] shadow-lg' : 'bg-gray-50 border-gray-100 text-black'}`}>
-                <div className="flex items-center gap-5">
-                  <span className={`text-2xl font-black italic w-6 ${index === 0 ? 'text-yellow-400' : 'text-gray-300'}`}>{index + 1}</span>
-                  <span className="font-bold text-lg tracking-tight">{player.name}</span>
-                </div>
+              <div key={player.name} className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${index === 0 ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200 hover:shadow-sm'}`}>
                 <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <span className="font-black text-2xl tabular-nums">{player.points}</span>
-                    <span className={`text-[10px] font-bold uppercase ml-1 ${index === 0 ? 'text-gray-400' : 'text-gray-500'}`}>pts</span>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${index === 0 ? 'bg-amber-400 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
+                    {index + 1}
                   </div>
-                  {index === 0 && <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />}
+                  <span className="font-semibold">{player.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="font-bold text-lg tabular-nums">{player.points}</span>
+                    <span className={`text-[9px] font-bold uppercase ml-1 opacity-60`}>pts</span>
+                  </div>
+                  {index === 0 && <Award className="w-4 h-4 text-amber-400" />}
                 </div>
               </div>
             ))}
@@ -114,167 +112,170 @@ export default function Dashboard() {
         </div>
 
         {/* Next Race Card */}
-        <div className="card-minimal p-6 border-l-8 border-black flex flex-col justify-between bg-gray-50/50">
-          <div>
-            <h2 className="text-xl font-bold flex items-center gap-3 mb-8 text-black italic uppercase">
-              <Calendar className="w-6 h-6 text-gray-400" />
-              Next Round
-            </h2>
-            
-            {nextRace ? (
-              <div className="space-y-6">
-                <div>
-                  <div className="inline-block px-2 py-1 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] mb-3">Round {nextRace.round}</div>
-                  <div className="text-3xl font-black text-black leading-none italic uppercase tracking-tighter mb-2">{nextRace.name}</div>
-                  <div className="text-gray-500 font-bold flex items-center gap-2">
-                    <Flag className="w-4 h-4" />
-                    {nextRace.dateString}
-                  </div>
+        <div className="card-minimal p-6 bg-white border-slate-200/60 shadow-sm flex flex-col">
+          <h2 className="text-sm font-bold flex items-center gap-2 mb-8 text-slate-800 uppercase tracking-widest">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            Prochain Round
+          </h2>
+          
+          {nextRace ? (
+            <div className="space-y-6 flex-1 flex flex-col justify-between">
+              <div>
+                <div className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold uppercase tracking-wider rounded mb-3">Round {nextRace.round}</div>
+                <div className="text-2xl font-bold text-slate-900 leading-tight mb-1">{nextRace.name}</div>
+                <div className="text-slate-500 text-xs font-medium flex items-center gap-1.5">
+                  <Flag className="w-3.5 h-3.5" />
+                  {nextRace.dateString}
                 </div>
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Countdown to Q1</div>
-                  <div className="text-2xl font-mono font-black text-black tracking-tighter">
+              </div>
+              
+              <div className="mt-8 space-y-4">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-[9px] text-slate-400 uppercase font-bold tracking-widest mb-1.5">Départ dans</div>
+                  <div className="text-xl font-mono font-bold text-slate-800 tracking-tight">
                     {countdown}
                   </div>
                 </div>
+                
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">État</span>
+                  {userPredictions ? (
+                    <span className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      Prêt
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] uppercase tracking-wider">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                      À remplir
+                    </span>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="animate-pulse flex space-y-4 flex-col">
-                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-20 bg-gray-200 rounded w-full"></div>
-              </div>
-            )}
-          </div>
-          
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            {userPredictions ? (
-              <div className="flex items-center gap-2 text-green-600 font-bold text-xs uppercase tracking-wider">
-                <div className="w-2 h-2 rounded-full bg-green-600 animate-ping" />
-                Pronostics validés
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-red-500 font-bold text-xs uppercase tracking-wider">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                Pas encore de prono
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-slate-100 rounded w-1/4"></div>
+              <div className="h-8 bg-slate-100 rounded w-3/4"></div>
+              <div className="h-24 bg-slate-100 rounded w-full"></div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Insights Section */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-black flex items-center gap-3 text-black italic uppercase">
-          <BarChart3 className="w-7 h-7 text-black" />
-          Analyses & Insights
+        <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
+          <BarChart3 className="w-4 h-4 text-slate-400" />
+          Analyses de Performance
         </h2>
         
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <div className="card-minimal p-5 bg-black text-white">
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4 flex items-center gap-2">
-              <Target className="w-3 h-3" /> Exactitude Moyenne
+          <div className="card-minimal p-5 bg-white border-slate-200/60 shadow-sm">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+              <Target className="w-3 h-3" /> Moyenne / GP
             </div>
-            <div className="text-4xl font-black italic mb-1">{(insights?.averageCorrectPerGP || 0).toFixed(1)}</div>
-            <div className="text-[10px] font-bold text-gray-400">PRONOS CORRECTS PAR GP</div>
+            <div className="text-3xl font-bold text-slate-900">{(insights?.averageCorrectPerGP || 0).toFixed(1)}</div>
+            <div className="text-[9px] font-bold text-slate-400 mt-1 uppercase">PRONOS CORRECTS</div>
           </div>
 
-          <div className="card-minimal p-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
-              <Zap className="w-3 h-3 text-yellow-500" /> Quali vs Course
+          <div className="card-minimal p-5 bg-white border-slate-200/60 shadow-sm">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+              <Zap className="w-3 h-3 text-amber-500" /> Précision
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="text-2xl font-black italic">{(insights?.qualiAccuracy || 0).toFixed(0)}%</div>
-                <div className="text-[9px] font-bold text-gray-400 uppercase">QUALI</div>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-2xl font-bold text-slate-900">{(insights?.qualiAccuracy || 0).toFixed(0)}%</div>
+                <div className="text-[8px] font-bold text-slate-400 uppercase">Quali</div>
               </div>
-              <div className="w-px h-10 bg-gray-100" />
-              <div className="flex-1 text-right">
-                <div className="text-2xl font-black italic">{(insights?.raceAccuracy || 0).toFixed(0)}%</div>
-                <div className="text-[9px] font-bold text-gray-400 uppercase">COURSE</div>
+              <div className="w-px h-8 bg-slate-100" />
+              <div className="text-right">
+                <div className="text-2xl font-bold text-slate-900">{(insights?.raceAccuracy || 0).toFixed(0)}%</div>
+                <div className="text-[8px] font-bold text-slate-400 uppercase">Course</div>
               </div>
             </div>
           </div>
 
-          <div className="card-minimal p-5 lg:col-span-2">
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
-              <Trophy className="w-3 h-3 text-black" /> Pilotes les mieux pronostiqués
+          <div className="card-minimal p-5 lg:col-span-2 bg-white border-slate-200/60 shadow-sm">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+              <Trophy className="w-3 h-3 text-slate-400" /> Pilotes les mieux pronostiqués
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
               {insights?.bestPredictedDrivers.length ? insights.bestPredictedDrivers.map((d, i) => (
-                <div key={d.name} className="flex-shrink-0 text-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black mb-2 ${i === 0 ? 'bg-yellow-400 text-black' : 'bg-gray-100 text-gray-500'}`}>
+                <div key={d.name} className="flex-shrink-0 flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold mb-2 ${i === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-50 text-slate-500'}`}>
                     {d.count}
                   </div>
-                  <div className="text-[10px] font-bold text-black uppercase w-16 truncate">{d.name.split(' ').pop()}</div>
+                  <div className="text-[8px] font-bold text-slate-600 uppercase w-12 truncate text-center">{d.name.split(' ').pop()}</div>
                 </div>
-              )) : <div className="text-gray-400 text-xs italic py-2">Pas encore de données</div>}
+              )) : <div className="text-slate-400 text-[10px] italic py-2">En attente de données...</div>}
             </div>
           </div>
         </div>
       </section>
 
       {/* GP History Viewer */}
-      <section className="card-minimal overflow-hidden border-2 border-gray-100">
-        <div className="bg-gray-50 border-b border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+        <div className="bg-slate-50/50 border-b border-slate-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setViewerRound(r => Math.max(1, r - 1))}
-              className="p-2 hover:bg-white rounded-full border border-gray-200 transition-all shadow-sm active:scale-90"
+              className="p-1.5 hover:bg-white rounded-lg border border-slate-200 transition-all shadow-sm active:scale-95 text-slate-400 hover:text-slate-900"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-center min-w-[200px]">
-              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visualisation GP</div>
-              <div className="text-lg font-black uppercase italic tracking-tight">
+            <div className="text-center min-w-[180px]">
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Visualisation du Weekend</div>
+              <div className="text-sm font-bold text-slate-800 uppercase tracking-tight">
                 {calendar2026.find(r => r.round === viewerRound)?.name}
               </div>
             </div>
             <button 
-              onClick={() => setViewerRound(r => Math.min(24, r + 1))}
-              className="p-2 hover:bg-white rounded-full border border-gray-200 transition-all shadow-sm active:scale-90"
+              onClick={() => setViewerRound(r => Math.min(22, r + 1))}
+              className="p-1.5 hover:bg-white rounded-lg border border-slate-200 transition-all shadow-sm active:scale-95 text-slate-400 hover:text-slate-900"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div>
             {!viewerResult && (
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase rounded-full">En attente de résultats</span>
+              <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[9px] font-bold uppercase tracking-wider rounded-md border border-amber-100">En attente de résultats</span>
             )}
           </div>
         </div>
 
         <div className="p-6">
           {Object.keys(viewerPredictions).length === 0 ? (
-            <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
-              <Info className="w-10 h-10 text-gray-400" />
-              <p className="font-bold text-gray-500 uppercase tracking-widest">Aucun pronostic pour ce week-end</p>
+            <div className="py-16 text-center flex flex-col items-center gap-3 opacity-40">
+              <Info className="w-8 h-8 text-slate-300" />
+              <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Aucun pronostic enregistré</p>
             </div>
           ) : (
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-10 lg:grid-cols-2">
+              {/* Quali Results Table */}
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 border-b pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <Zap className="w-3 h-3" /> Qualifications
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                        <th className="pb-2 w-10">Pos</th>
-                        <th className="pb-2 min-w-[100px]">Résultat</th>
+                      <tr className="text-[8px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                        <th className="pb-2 w-8">Pos</th>
+                        <th className="pb-2 min-w-[100px]">Officiel</th>
                         {Object.keys(viewerPredictions).map(p => (
                           <th key={p} className="pb-2 text-center px-2">{p}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-slate-50">
                       {Array.from({ length: 10 }).map((_, i) => {
                         const result = viewerResult?.qualiPositions[i];
                         return (
-                          <tr key={`quali-row-${i}`} className="group">
-                            <td className="py-2 font-mono text-xs text-gray-400">P{i+1}</td>
-                            <td className="py-2 font-bold text-sm text-black group-hover:text-black transition-colors">
+                          <tr key={`quali-row-${i}`} className="group hover:bg-slate-50/50 transition-colors">
+                            <td className="py-2 font-mono text-[10px] text-slate-400">P{i+1}</td>
+                            <td className="py-2 font-bold text-xs text-slate-900">
                               {result || "—"}
                             </td>
                             {Object.entries(viewerPredictions).map(([name, pred]) => {
@@ -282,7 +283,7 @@ export default function Dashboard() {
                               const isCorrect = result && p === result;
                               return (
                                 <td key={`quali-${name}-${i}`} className="py-2 text-center">
-                                  <div className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${isCorrect ? 'bg-green-100 text-green-700' : 'text-gray-500'}`}>
+                                  <div className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${isCorrect ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm shadow-emerald-50' : 'text-slate-400 opacity-60'}`}>
                                     {p ? p.split(' ').pop() : "—"}
                                   </div>
                                 </td>
@@ -296,28 +297,29 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Race Results Table */}
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 border-b pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <Flag className="w-3 h-3" /> Course
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                        <th className="pb-2 w-10">Pos</th>
-                        <th className="pb-2 min-w-[100px]">Résultat</th>
+                      <tr className="text-[8px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                        <th className="pb-2 w-8">Pos</th>
+                        <th className="pb-2 min-w-[100px]">Officiel</th>
                         {Object.keys(viewerPredictions).map(p => (
                           <th key={p} className="pb-2 text-center px-2">{p}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-slate-50">
                       {Array.from({ length: 10 }).map((_, i) => {
                         const result = viewerResult?.racePositions[i];
                         return (
-                          <tr key={`race-row-${i}`} className="group">
-                            <td className="py-2 font-mono text-xs text-gray-400">P{i+1}</td>
-                            <td className="py-2 font-bold text-sm text-black">
+                          <tr key={`race-row-${i}`} className="group hover:bg-slate-50/50 transition-colors">
+                            <td className="py-2 font-mono text-[10px] text-slate-400">P{i+1}</td>
+                            <td className="py-2 font-bold text-xs text-slate-900">
                               {result || "—"}
                             </td>
                             {Object.entries(viewerPredictions).map(([name, pred]) => {
@@ -325,7 +327,7 @@ export default function Dashboard() {
                               const isCorrect = result && p === result;
                               return (
                                 <td key={`race-${name}-${i}`} className="py-2 text-center">
-                                  <div className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${isCorrect ? 'bg-green-100 text-green-700' : 'text-gray-500'}`}>
+                                  <div className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${isCorrect ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm shadow-emerald-50' : 'text-slate-400 opacity-60'}`}>
                                     {p ? p.split(' ').pop() : "—"}
                                   </div>
                                 </td>
@@ -344,18 +346,22 @@ export default function Dashboard() {
         
         {/* Bets summary row */}
         {Object.keys(viewerPredictions).length > 0 && (
-          <div className="bg-gray-50 p-6 border-t border-gray-100">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 italic">Paris Spéciaux & Bonus</h4>
+          <div className="bg-slate-50/30 p-6 border-t border-slate-100">
+            <h4 className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 italic">Paris Spéciaux</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(viewerPredictions).map(([name, pred]) => (
-                <div key={`bet-${name}`} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                  <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">{name}</div>
-                  <div className="text-[11px] italic mb-2 leading-tight">"{pred.specialBet || "Aucun"}"</div>
-                  {pred.betWon !== undefined && (
-                    <div className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${pred.betWon ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {pred.betWon ? '✓ +2 pts' : '✗ 0 pt'}
-                    </div>
-                  )}
+                <div key={`bet-${name}`} className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between min-h-[90px]">
+                  <div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase mb-1.5">{name}</div>
+                    <div className="text-[11px] font-medium text-slate-700 leading-snug">"{pred.specialBet || "—"}"</div>
+                  </div>
+                  <div className="mt-3">
+                    {pred.betWon !== undefined && (
+                      <div className={`inline-flex items-center gap-1 text-[8px] font-bold uppercase px-2 py-0.5 rounded-full border ${pred.betWon ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                        {pred.betWon ? '✓ +2 pts' : '✗ 0 pt'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
