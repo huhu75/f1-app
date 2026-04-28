@@ -5,6 +5,7 @@ import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, Chevr
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService, Prediction, DashboardInsights, RaceResult } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function Dashboard() {
   const [standings, setStandings] = useState<{ name: string; points: number }[]>([]);
@@ -12,6 +13,10 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState<string>("");
   const [userPredictions, setUserPredictions] = useState<Prediction | null>(null);
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
+  const [seasonProgress, setSeasonProgress] = useState<{
+    rounds: number[];
+    players: { name: string; scores: number[]; cumulative: number[] }[];
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   const [viewerRound, setViewerRound] = useState(1);
@@ -20,15 +25,17 @@ export default function Dashboard() {
 
   const loadAllData = async () => {
     setIsLoading(true);
-    const [leaderboard, stats, allPreds, allResults] = await Promise.all([
+    const [leaderboard, stats, allPreds, allResults, progress] = await Promise.all([
       storageService.getLeaderboard(),
       storageService.getInsights(),
       storageService.getAllPredictions(),
-      storageService.getRaceResults()
+      storageService.getRaceResults(),
+      storageService.getSeasonProgress()
     ]);
 
     setStandings(leaderboard);
     setInsights(stats);
+    setSeasonProgress(progress);
     
     const roundsWithResults = Object.keys(allResults).map(Number);
     const lastRound = roundsWithResults.length > 0 ? Math.max(...roundsWithResults) : 1;
@@ -62,6 +69,17 @@ export default function Dashboard() {
     };
     updateViewer();
   }, [viewerRound]);
+
+  // Format chart data
+  const chartData = seasonProgress?.rounds.map((round, idx) => {
+    const data: any = { name: `R${round}` };
+    seasonProgress.players.forEach(p => {
+      data[p.name] = p.cumulative[idx];
+    });
+    return data;
+  }) || [];
+
+  const playerColors = ["#0f172a", "#3b82f6", "#ef4444", "#10b981"];
 
   return (
     <div className="space-y-12 text-slate-900 bg-slate-50/30 pb-20 max-w-6xl mx-auto px-4 sm:px-6">
@@ -162,6 +180,89 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Progress Chart */}
+      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl p-6">
+        <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest mb-8">
+          <TrendingUp className="w-4 h-4 text-slate-400" />
+          Évolution des Scores Cumulés
+        </h2>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fill: '#94a3b8'}} 
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fill: '#94a3b8'}} 
+              />
+              <Tooltip 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Legend iconType="circle" />
+              {seasonProgress?.players.map((p, i) => (
+                <Line 
+                  key={p.name} 
+                  type="monotone" 
+                  dataKey={p.name} 
+                  stroke={playerColors[i % playerColors.length]} 
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Championship Matrix Table */}
+      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
+            <Info className="w-4 h-4 text-slate-400" />
+            Tableau de Saison (Points par GP)
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 min-w-[140px]">Joueur</th>
+                {seasonProgress?.rounds.map(r => (
+                  <th key={`head-${r}`} className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center min-w-[50px]">R{r}</th>
+                ))}
+                <th className="p-4 text-[10px] font-bold text-slate-900 uppercase tracking-widest border-b border-slate-100 text-center bg-slate-100/50">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {seasonProgress?.players.map((p, pIdx) => (
+                <tr key={`row-${p.name}`} className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-4 text-sm font-bold text-slate-700 flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: playerColors[pIdx % playerColors.length] }} />
+                    {p.name}
+                  </td>
+                  {p.scores.map((s, sIdx) => (
+                    <td key={`score-${p.name}-${sIdx}`} className="p-4 text-center text-xs font-medium text-slate-500 tabular-nums">
+                      {s || "—"}
+                    </td>
+                  ))}
+                  <td className="p-4 text-center text-sm font-bold text-slate-900 bg-slate-50/50 tabular-nums">
+                    {p.cumulative[p.cumulative.length - 1]}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* Insights Section */}
       <section className="space-y-6">

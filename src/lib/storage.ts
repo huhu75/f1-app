@@ -184,5 +184,44 @@ export const storageService = {
       qualiAccuracy: totalPositionsPredicted ? (totalCorrectQuali / totalPositionsPredicted) * 100 : 0,
       raceAccuracy: totalPositionsPredicted ? (totalCorrectRace / totalPositionsPredicted) * 100 : 0,
     };
+  },
+
+  async getSeasonProgress(): Promise<{
+    rounds: number[];
+    players: { name: string; scores: number[]; cumulative: number[] }[];
+  }> {
+    const allPredictions = await this.getAllPredictions();
+    const allResults = await this.getRaceResults();
+    const rounds = calendar2026.map(r => r.round);
+    
+    const results = PLAYERS.map(name => {
+      let cumulative = 0;
+      const scores: number[] = [];
+      const cumulativeScores: number[] = [];
+
+      rounds.forEach(round => {
+        const pred = allPredictions[round]?.[name];
+        const res = allResults[round];
+        let roundScore = 0;
+
+        if (pred && res) {
+          pred.qualiPositions.forEach((driver, idx) => {
+            if (driver && driver === res.qualiPositions[idx]) roundScore += 1;
+          });
+          pred.racePositions.forEach((driver, idx) => {
+            if (driver && driver === res.racePositions[idx]) roundScore += 1;
+          });
+          if (pred.betWon) roundScore += 2;
+        }
+
+        cumulative += roundScore;
+        scores.push(roundScore);
+        cumulativeScores.push(cumulative);
+      });
+
+      return { name, scores, cumulative: cumulativeScores };
+    });
+
+    return { rounds, players: results };
   }
 };
