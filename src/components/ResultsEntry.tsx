@@ -12,6 +12,7 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
   const [raceResults, setRaceResults] = useState<string[]>(Array(10).fill(""));
   const [playersPredictions, setPlayersPredictions] = useState<Record<string, Prediction>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,7 +40,9 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
       racePositions: raceResults
     });
     setIsSaving(false);
+    setShowSuccess(true);
     onSaved();
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const toggleBet = async (playerName: string, won: boolean) => {
@@ -101,14 +104,18 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
                       className="flex-1 p-2 bg-gray-50 border border-gray-100 rounded text-sm"
                     >
                       <option value="">-</option>
-                      {drivers.map(d => (
-                        <option 
-                          key={d} 
-                          value={d}
-                          disabled={qualiResults.includes(d) && qualiResults[i] !== d}
-                        >
-                          {d}
-                        </option>
+                      {teams2026.map((team) => (
+                        <optgroup key={team.name} label={team.name}>
+                          {team.drivers.map(driver => (
+                            <option 
+                              key={driver} 
+                              value={driver}
+                              disabled={qualiResults.includes(driver) && qualiResults[i] !== driver}
+                            >
+                              {driver}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -132,14 +139,18 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
                       className="flex-1 p-2 bg-gray-50 border border-gray-100 rounded text-sm"
                     >
                       <option value="">-</option>
-                      {drivers.map(d => (
-                        <option 
-                          key={d} 
-                          value={d}
-                          disabled={raceResults.includes(d) && raceResults[i] !== d}
-                        >
-                          {d}
-                        </option>
+                      {teams2026.map((team) => (
+                        <optgroup key={team.name} label={team.name}>
+                          {team.drivers.map(driver => (
+                            <option 
+                              key={driver} 
+                              value={driver}
+                              disabled={raceResults.includes(driver) && raceResults[i] !== driver}
+                            >
+                              {driver}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -180,7 +191,13 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col items-end gap-3">
+            {showSuccess && (
+              <div className="flex items-center gap-2 text-green-600 font-bold text-xs animate-in fade-in slide-in-from-right-4">
+                <CheckCircle2 className="w-4 h-4" />
+                Résultats enregistrés !
+              </div>
+            )}
             <button 
               onClick={handleSave}
               disabled={isSaving}
