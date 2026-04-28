@@ -150,19 +150,21 @@ export const storageService = {
 
     Object.entries(allResults).forEach(([roundStr, result]) => {
       const round = parseInt(roundStr);
-      const preds = allPredictions[round] || {};
+      const preds = allPredictions[round];
+      if (!preds || Object.keys(preds).length === 0) return; // Skip rounds without predictions
+      
       roundsWithResults++;
 
       Object.values(preds).forEach(pred => {
         pred.qualiPositions.forEach((driver, idx) => {
           totalPositionsPredicted++;
-          if (driver && driver === result.qualiPositions[idx]) {
+          if (driver && result.qualiPositions && driver === result.qualiPositions[idx]) {
             totalCorrectQuali++;
             driverStats[driver] = (driverStats[driver] || 0) + 1;
           }
         });
         pred.racePositions.forEach((driver, idx) => {
-          if (driver && driver === result.racePositions[idx]) {
+          if (driver && result.racePositions && driver === result.racePositions[idx]) {
             totalCorrectRace++;
             driverStats[driver] = (driverStats[driver] || 0) + 1;
           }
@@ -176,11 +178,13 @@ export const storageService = {
       .slice(0, 5);
 
     const totalCorrect = totalCorrectQuali + totalCorrectRace;
-    const playerCount = PLAYERS.length;
+    
+    // Calculate average based on actual players who played in those rounds
+    const totalPredictionsMade = totalPositionsPredicted / 10; // 10 positions per player session (approx)
     
     return {
       bestPredictedDrivers: bestDrivers,
-      averageCorrectPerGP: roundsWithResults ? totalCorrect / (roundsWithResults * playerCount) : 0,
+      averageCorrectPerGP: roundsWithResults ? totalCorrect / roundsWithResults : 0,
       qualiAccuracy: totalPositionsPredicted ? (totalCorrectQuali / totalPositionsPredicted) * 100 : 0,
       raceAccuracy: totalPositionsPredicted ? (totalCorrectRace / totalPositionsPredicted) * 100 : 0,
     };
@@ -205,12 +209,16 @@ export const storageService = {
         let roundScore = 0;
 
         if (pred && res) {
-          pred.qualiPositions.forEach((driver, idx) => {
-            if (driver && driver === res.qualiPositions[idx]) roundScore += 1;
-          });
-          pred.racePositions.forEach((driver, idx) => {
-            if (driver && driver === res.racePositions[idx]) roundScore += 1;
-          });
+          if (res.qualiPositions) {
+            pred.qualiPositions.forEach((driver, idx) => {
+              if (driver && driver === res.qualiPositions[idx]) roundScore += 1;
+            });
+          }
+          if (res.racePositions) {
+            pred.racePositions.forEach((driver, idx) => {
+              if (driver && driver === res.racePositions[idx]) roundScore += 1;
+            });
+          }
           if (pred.betWon) roundScore += 2;
         }
 
