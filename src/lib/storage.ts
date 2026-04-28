@@ -233,5 +233,77 @@ export const storageService = {
     });
 
     return { rounds, players: results };
+  },
+
+  async getPlayerStats(playerName: string) {
+    const allPredictions = await this.getAllPredictions();
+    const allResults = await this.getRaceResults();
+    
+    let totalPoints = 0;
+    let totalQualiCorrect = 0;
+    let totalRaceCorrect = 0;
+    let betsWon = 0;
+    let betsTotal = 0;
+    let roundsParticipated = 0;
+    const driverFrequency: Record<string, number> = {};
+    const scoresByRound: { round: number; points: number }[] = [];
+
+    Object.entries(allPredictions).forEach(([roundStr, playersPreds]) => {
+      const round = parseInt(roundStr);
+      const pred = playersPreds[playerName];
+      const result = allResults[round];
+      
+      if (pred) {
+        roundsParticipated++;
+        let roundScore = 0;
+        
+        pred.qualiPositions.forEach((driver, idx) => {
+          if (driver) {
+            driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
+            if (result?.qualiPositions && driver === result.qualiPositions[idx]) {
+              roundScore += 1;
+              totalQualiCorrect++;
+            }
+          }
+        });
+
+        pred.racePositions.forEach((driver, idx) => {
+          if (driver) {
+            driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
+            if (result?.racePositions && driver === result.racePositions[idx]) {
+              roundScore += 1;
+              totalRaceCorrect++;
+            }
+          }
+        });
+
+        if (pred.betWon !== undefined) {
+          betsTotal++;
+          if (pred.betWon) {
+            roundScore += 2;
+            betsWon++;
+          }
+        }
+
+        totalPoints += roundScore;
+        scoresByRound.push({ round, points: roundScore });
+      }
+    });
+
+    const favoriteDrivers = Object.entries(driverFrequency)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    return {
+      playerName,
+      totalPoints,
+      avgPointsPerGP: roundsParticipated ? totalPoints / roundsParticipated : 0,
+      qualiAccuracy: roundsParticipated ? (totalQualiCorrect / (roundsParticipated * 10)) * 100 : 0,
+      raceAccuracy: roundsParticipated ? (totalRaceCorrect / (roundsParticipated * 10)) * 100 : 0,
+      betWinRate: betsTotal ? (betsWon / betsTotal) * 100 : 0,
+      favoriteDrivers,
+      lastScores: scoresByRound.sort((a, b) => b.round - a.round).slice(0, 5).reverse()
+    };
   }
 };

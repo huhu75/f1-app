@@ -5,7 +5,8 @@ import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, Chevr
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService, Prediction, DashboardInsights, RaceResult } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
   const [standings, setStandings] = useState<{ name: string; points: number }[]>([]);
@@ -22,6 +23,10 @@ export default function Dashboard() {
   const [viewerRound, setViewerRound] = useState(1);
   const [viewerPredictions, setViewerPredictions] = useState<Record<string, Prediction>>({});
   const [viewerResult, setViewerResult] = useState<RaceResult | null>(null);
+
+  // Player Detail Modal State
+  const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
+  const [playerStats, setPlayerStats] = useState<any>(null);
 
   const loadAllData = async () => {
     setIsLoading(true);
@@ -70,6 +75,18 @@ export default function Dashboard() {
     updateViewer();
   }, [viewerRound]);
 
+  useEffect(() => {
+    if (selectedPlayerName) {
+      const fetchPlayerStats = async () => {
+        const stats = await storageService.getPlayerStats(selectedPlayerName);
+        setPlayerStats(stats);
+      };
+      fetchPlayerStats();
+    } else {
+      setPlayerStats(null);
+    }
+  }, [selectedPlayerName]);
+
   // Format chart data
   const chartData = seasonProgress?.rounds.map((round, idx) => {
     const gpName = calendar2026.find(r => r.round === round)?.name || `R${round}`;
@@ -108,12 +125,17 @@ export default function Dashboard() {
               <Trophy className="w-4 h-4 text-amber-500" />
               Classement Général
             </h2>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Cliquez pour voir les détails</span>
           </div>
           <div className="space-y-2.5 flex-1">
             {standings.map((player, index) => (
-              <div key={player.name} className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${index === 0 ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200 hover:shadow-sm'}`}>
+              <button 
+                key={player.name} 
+                onClick={() => setSelectedPlayerName(player.name)}
+                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 group ${index === 0 ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300 hover:shadow-md'}`}
+              >
                 <div className="flex items-center gap-4">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${index === 0 ? 'bg-amber-400 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${index === 0 ? 'bg-amber-400 text-slate-900' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
                     {index + 1}
                   </div>
                   <span className="font-semibold">{player.name}</span>
@@ -123,9 +145,9 @@ export default function Dashboard() {
                     <span className="font-bold text-lg tabular-nums">{player.points}</span>
                     <span className={`text-[9px] font-bold uppercase ml-1 opacity-60`}>pts</span>
                   </div>
-                  {index === 0 && <Award className="w-4 h-4 text-amber-400" />}
+                  {index === 0 ? <Award className="w-4 h-4 text-amber-400" /> : <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -482,6 +504,129 @@ export default function Dashboard() {
 
       {/* Admin Panel */}
       <ResultsEntry onSaved={loadAllData} />
+
+      {/* Player Detail Modal */}
+      <AnimatePresence>
+        {selectedPlayerName && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPlayerName(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white rounded-3xl shadow-2xl shadow-slate-900/20 w-full max-w-2xl overflow-hidden"
+            >
+              {playerStats ? (
+                <div className="flex flex-col">
+                  {/* Modal Header */}
+                  <div className="bg-slate-900 text-white p-8">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h3 className="text-3xl font-bold tracking-tight">{playerStats.playerName}</h3>
+                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mt-1">Profil Statistiques</p>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedPlayerName(null)}
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                      >
+                        <ChevronRight className="w-6 h-6 rotate-180" />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-8">
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Points</div>
+                        <div className="text-3xl font-bold text-amber-400">{playerStats.totalPoints}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Moyenne / GP</div>
+                        <div className="text-3xl font-bold text-white">{playerStats.avgPointsPerGP.toFixed(1)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Paris Spéciaux</div>
+                        <div className="text-3xl font-bold text-emerald-400">{playerStats.betWinRate.toFixed(0)}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-hide">
+                    {/* Accuracy Section */}
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Target className="w-3.5 h-3.5" /> Précision par Session
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="text-2xl font-bold text-slate-900">{playerStats.qualiAccuracy.toFixed(1)}%</div>
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Qualifications</div>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="text-2xl font-bold text-slate-900">{playerStats.raceAccuracy.toFixed(1)}%</div>
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Course</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recent Form */}
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5" /> État de Forme (Derniers GP)
+                      </h4>
+                      <div className="h-32 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={playerStats.lastScores}>
+                            <Bar 
+                              dataKey="points" 
+                              fill="#0f172a" 
+                              radius={[4, 4, 0, 0]} 
+                              barSize={30}
+                            />
+                            <XAxis 
+                              dataKey="round" 
+                              hide 
+                            />
+                            <Tooltip 
+                              cursor={{fill: '#f1f5f9'}}
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Favorites Section */}
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" /> Pilotes les plus joués
+                      </h4>
+                      <div className="space-y-2">
+                        {playerStats.favoriteDrivers.map((d: any) => (
+                          <div key={d.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <span className="text-sm font-bold text-slate-700">{d.name}</span>
+                            <span className="text-xs font-bold text-slate-400">{d.count} fois</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-20 flex flex-col items-center justify-center gap-4">
+                  <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Chargement des stats...</p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
