@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, AlertCircle, Check, Loader2 } from "lucide-react";
 import { teams2026, getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
-import { storageService } from "@/lib/storage";
+import { storageService, PLAYERS } from "@/lib/storage";
 
 export default function Pronostics() {
   const positions = Array.from({ length: 10 }, (_, i) => i);
@@ -112,7 +112,7 @@ export default function Pronostics() {
                 onChange={(e) => setCurrentPlayer(e.target.value)}
                 className="w-full bg-black text-white rounded-md h-12 px-4 text-sm font-bold outline-none border-none transition-all hover:bg-gray-800"
               >
-                {["Hugo", "Ami 1", "Ami 2", "Ami 3"].map(p => (
+                {PLAYERS.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
