@@ -27,8 +27,8 @@ export default function RootLayout({
                 </span>
               </Link>
               <nav className="flex items-center space-x-6 text-sm font-medium">
-                <Link href="/" className="transition-colors hover:text-black text-gray-500">Dashboard</Link>
                 <Link href="/pronostics" className="transition-colors hover:text-black text-gray-500">Pronostics</Link>
+                <Link href="/" className="transition-colors hover:text-black text-gray-500">Résultats</Link>
               </nav>
             </div>
             <div className="ml-auto flex items-center space-x-4">

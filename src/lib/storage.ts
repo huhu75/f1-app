@@ -112,12 +112,15 @@ export const storageService = {
     }
   },
 
-  async getLeaderboard(): Promise<{ name: string; points: number }[]> {
+  async getLeaderboard(): Promise<{ name: string; points: number; qualiPoints: number; racePoints: number; betPoints: number }[]> {
     const allPredictions = await this.getAllPredictions();
     const allResults = await this.getRaceResults();
     
     return PLAYERS.map(name => {
-      let points = 0;
+      let qualiPoints = 0;
+      let racePoints = 0;
+      let betPoints = 0;
+      
       Object.entries(allPredictions).forEach(([roundStr, playersPreds]) => {
         const round = parseInt(roundStr);
         const pred = playersPreds[name];
@@ -126,17 +129,23 @@ export const storageService = {
         if (pred && result) {
           // Points for Quali
           pred.qualiPositions.forEach((driver, idx) => {
-            if (driver && driver === result.qualiPositions[idx]) points += 1;
+            if (driver && driver === result.qualiPositions[idx]) qualiPoints += 1;
           });
           // Points for Race
           pred.racePositions.forEach((driver, idx) => {
-            if (driver && driver === result.racePositions[idx]) points += 1;
+            if (driver && driver === result.racePositions[idx]) racePoints += 1;
           });
           // Points for Special Bet
-          if (pred.betWon) points += 2;
+          if (pred.betWon) betPoints += 2;
         }
       });
-      return { name, points };
+      return { 
+        name, 
+        points: qualiPoints + racePoints + betPoints,
+        qualiPoints,
+        racePoints,
+        betPoints
+      };
     }).sort((a, b) => b.points - a.points);
   },
 

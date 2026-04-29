@@ -1,15 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2 } from "lucide-react";
+import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer } from "lucide-react";
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
+interface DetailedStanding {
+  name: string;
+  points: number;
+  qualiPoints: number;
+  racePoints: number;
+  betPoints: number;
+}
+
 export default function Dashboard() {
-  const [standings, setStandings] = useState<{ name: string; points: number }[]>([]);
+  const [standings, setStandings] = useState<DetailedStanding[]>([]);
   const [nextRace, setNextRace] = useState<any>(null);
   const [countdown, setCountdown] = useState<string>("");
   const [userPredictions, setUserPredictions] = useState<Prediction | null>(null);
@@ -31,7 +39,7 @@ export default function Dashboard() {
   const loadAllData = async () => {
     setIsLoading(true);
     const [leaderboard, stats, allPreds, allResults, progress] = await Promise.all([
-      storageService.getLeaderboard(),
+      storageService.getLeaderboard() as Promise<DetailedStanding[]>,
       storageService.getInsights(),
       storageService.getAllPredictions(),
       storageService.getRaceResults(),
@@ -97,164 +105,201 @@ export default function Dashboard() {
     return data;
   }) || [];
 
-  const playerColors = ["#0f172a", "#4338ca", "#be185d", "#0d9488"]; // Ardoise, Indigo, Framboise, Émeraude profond
+  const getPlayerColor = (name: string) => {
+    const colors: Record<string, string> = {
+      "Hugo": "#334155",      // Slate
+      "François": "#10b981",  // Emerald
+      "Carole": "#fb7185"     // Sunset Rose
+    };
+    return colors[name] || "#2b62e3";
+  };
+
+  // Winners by session
+  const qualiChamp = [...standings].sort((a, b) => b.qualiPoints - a.qualiPoints)[0];
+  const raceChamp = [...standings].sort((a, b) => b.racePoints - a.racePoints)[0];
+
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+      <Loader2 className="w-10 h-10 text-slate-200 animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Calcul des résultats détaillés...</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-12 text-slate-900 bg-slate-50/30 pb-20 max-w-6xl mx-auto px-4 sm:px-6">
-      {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-10">
+    <div className="space-y-12 text-slate-900 bg-white pb-24 max-w-6xl mx-auto px-4 sm:px-6">
+      {/* Header SOFT FLAT */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-12 border-b border-slate-50 pb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 text-sm font-medium">Saison F1 2026 • Championnat entre Amis</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 shadow-sm">
-            {calendar2026.length} GP
-          </span>
-          <span className="px-3 py-1.5 bg-slate-900 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-slate-200">
-            4 Joueurs
-          </span>
-        </div>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Standings Card */}
-        <div className="card-minimal p-6 lg:col-span-2 flex flex-col bg-white border-slate-200/60 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              Classement Général
-            </h2>
-            <span className="text-[10px] text-slate-400 font-bold uppercase">Cliquez pour voir les détails</span>
-          </div>
-          <div className="space-y-2.5 flex-1">
-            {standings.map((player, index) => (
-              <button 
-                key={player.name} 
-                onClick={() => setSelectedPlayerName(player.name)}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 group ${index === 0 ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300 hover:shadow-md'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${index === 0 ? 'bg-amber-400 text-slate-900' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-                    {index + 1}
-                  </div>
-                  <span className="font-semibold">{player.name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="font-bold text-lg tabular-nums">{player.points}</span>
-                    <span className={`text-[9px] font-bold uppercase ml-1 opacity-60`}>pts</span>
-                  </div>
-                  {index === 0 ? <Award className="w-4 h-4 text-amber-400" /> : <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Next Race Card */}
-        <div className="card-minimal p-6 bg-white border-slate-200/60 shadow-sm flex flex-col">
-          <h2 className="text-sm font-bold flex items-center gap-2 mb-8 text-slate-800 uppercase tracking-widest">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            Prochain Round
-          </h2>
-          
-          {nextRace ? (
-            <div className="space-y-6 flex-1 flex flex-col justify-between">
-              <div>
-                <div className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold uppercase tracking-wider rounded mb-3">Round {nextRace.round}</div>
-                <div className="text-2xl font-bold text-slate-900 leading-tight mb-1">{nextRace.name}</div>
-                <div className="text-slate-500 text-xs font-medium flex items-center gap-1.5">
-                  <Flag className="w-3.5 h-3.5" />
-                  {nextRace.dateString}
-                </div>
-              </div>
-              
-              <div className="mt-8 space-y-4">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-[9px] text-slate-400 uppercase font-bold tracking-widest mb-1.5">Départ dans</div>
-                  <div className="text-xl font-mono font-bold text-slate-800 tracking-tight">
-                    {countdown}
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">État</span>
-                  {userPredictions ? (
-                    <span className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                      Prêt
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] uppercase tracking-wider">
-                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
-                      À remplir
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-slate-100 rounded w-1/4"></div>
-              <div className="h-8 bg-slate-100 rounded w-3/4"></div>
-              <div className="h-24 bg-slate-100 rounded w-full"></div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl p-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
-            <TrendingUp className="w-4 h-4 text-slate-400" />
-            Évolution des Scores Cumulés
-          </h2>
-          <div className="flex items-center gap-4">
-            {seasonProgress?.players.map((p, i) => (
-              <div key={p.name} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: playerColors[i % playerColors.length] }} />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{p.name}</span>
-              </div>
-            ))}
+          <h1 className="text-4xl font-black uppercase tracking-tighter text-slate-900 mb-2">Résultats</h1>
+          <div className="flex items-center gap-2">
+            <div className="w-12 h-1 bg-[#2b62e3] rounded-full" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#2b62e3]/60">Saison F1 2026</p>
           </div>
         </div>
         
-        <div className="h-[350px] w-full mt-4">
+        <div className="flex flex-wrap gap-3">
+          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 flex items-center gap-3">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Saison en cours</span>
+          </div>
+          <div className="bg-[#2b62e3] px-4 py-2 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200">
+            {calendar2026.length} Grands Prix
+          </div>
+        </div>
+      </header>
+
+      {/* STATS OVERVIEW - IMPROVED CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {standings.map((p, i) => (
+          <button 
+            key={p.name} 
+            onClick={() => setSelectedPlayerName(p.name)}
+            className="group text-left bg-white border border-slate-100 p-6 rounded-3xl relative shadow-sm hover:shadow-md hover:border-[#2b62e3]/30 transition-all overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1.5 transition-transform group-hover:scale-y-125" style={{ backgroundColor: getPlayerColor(p.name) }} />
+            
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-black text-slate-100 group-hover:text-slate-200 transition-colors">0{i + 1}</span>
+                <p className="text-base font-black text-slate-900 uppercase tracking-tight">{p.name}</p>
+              </div>
+              {i === 0 && <Trophy className="w-5 h-5 text-amber-400 fill-amber-400" />}
+            </div>
+
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Points</h3>
+                <p className="text-5xl font-black text-slate-900 tabular-nums tracking-tighter">
+                  {p.points || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Session Breakdown - MORE VISIBLE */}
+            <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-50">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center">
+                    <Timer className="w-3 h-3 text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Qualifs</div>
+                    <div className="text-sm font-black text-slate-900 tabular-nums">{p.qualiPoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-50 h-1 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-300" style={{ width: `${p.points > 0 ? (p.qualiPoints/p.points)*100 : 0}%` }} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center">
+                    <Flag className="w-3 h-3 text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Course</div>
+                    <div className="text-sm font-black text-slate-900 tabular-nums">{p.racePoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-50 h-1 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-900" style={{ width: `${p.points > 0 ? (p.racePoints/p.points)*100 : 0}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Special Bet info */}
+            <div className="mt-4 flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
+               <Zap className="w-3 h-3 text-amber-500" />
+               <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Paris gagnés :</span>
+               <span className="text-[10px] font-black text-slate-700">{p.betPoints / 2 || 0}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* SESSION KINGS SECTION */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+              <Timer className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">L'Expert des Qualifs</h4>
+              <p className="text-xl font-black text-slate-900 uppercase">{qualiChamp?.name || "—"}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black text-[#2b62e3] tabular-nums">{qualiChamp?.qualiPoints || 0}</span>
+            <p className="text-[8px] font-black uppercase text-slate-300">points</p>
+          </div>
+        </div>
+
+        <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+              <Flag className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Le Maître de la Course</h4>
+              <p className="text-xl font-black text-slate-900 uppercase">{raceChamp?.name || "—"}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black text-[#2b62e3] tabular-nums">{raceChamp?.racePoints || 0}</span>
+            <p className="text-[8px] font-black uppercase text-slate-300">points</p>
+          </div>
+        </div>
+      </section>
+
+      {/* CHART SECTION */}
+      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Évolution</h2>
+            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Progression du Championnat</p>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {PLAYERS.map((name, i) => (
+              <div key={name} className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getPlayerColor(name) }} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f1f5f9" />
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
               <XAxis 
                 dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 9, fill: '#94a3b8', fontWeight: 600}} 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }}
                 dy={15}
-                interval={0}
-                angle={-25}
-                textAnchor="end"
-                height={60}
               />
               <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#cbd5e1', fontWeight: 600}} 
-                dx={-10}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }}
               />
               <Tooltip 
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
                     return (
-                      <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-2xl shadow-slate-200/50 min-w-[160px]">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 border-b border-slate-50 pb-2">{label}</p>
-                        <div className="space-y-2.5">
-                          {payload.sort((a, b) => (b.value as number) - (a.value as number)).map((entry: any) => (
+                      <div className="bg-white border border-slate-100 p-4 rounded-xl shadow-xl min-w-[140px]">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">{label}</p>
+                        <div className="space-y-2">
+                          {payload.map((entry: any) => (
                             <div key={entry.name} className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                                <span className="text-[11px] font-bold text-slate-700">{entry.name}</span>
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span className="text-[10px] font-black text-slate-900 uppercase">{entry.name}</span>
                               </div>
-                              <span className="text-[11px] font-black text-slate-900 tabular-nums">{entry.value} <span className="text-[8px] text-slate-400 uppercase">pts</span></span>
+                              <span className="text-[10px] font-black text-slate-900 tabular-nums">{entry.value}</span>
                             </div>
                           ))}
                         </div>
@@ -264,15 +309,15 @@ export default function Dashboard() {
                   return null;
                 }}
               />
-              {seasonProgress?.players.map((p, i) => (
+              {PLAYERS.map((name) => (
                 <Line 
-                  key={p.name} 
+                  key={name} 
                   type="monotone" 
-                  dataKey={p.name} 
-                  stroke={playerColors[i % playerColors.length]} 
-                  strokeWidth={1.8}
-                  dot={{ r: 2, strokeWidth: 2, fill: 'white' }}
-                  activeDot={{ r: 4, strokeWidth: 0, fill: playerColors[i % playerColors.length] }}
+                  dataKey={name} 
+                  stroke={getPlayerColor(name)} 
+                  strokeWidth={3}
+                  dot={{ r: 3, strokeWidth: 2, fill: 'white' }}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
                   connectNulls
                 />
               ))}
@@ -281,43 +326,73 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Championship Matrix Table */}
-      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
-            <Info className="w-4 h-4 text-slate-400" />
-            Tableau de Saison (Points par GP)
+      {/* SESSION COMPARISON BAR CHART */}
+      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
+        <div className="mb-10">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
+          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
+        </div>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }} />
+              <Tooltip 
+                cursor={{fill: '#f8fafc'}}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Bar dataKey="qualiPoints" name="Qualifs" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="racePoints" name="Course" fill="#1e293b" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="betPoints" name="Paris" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* TABLE SECTION - SOFT FLAT */}
+      <section className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+          <h2 className="text-[10px] font-black flex items-center gap-2 text-slate-400 uppercase tracking-[0.2em]">
+            <Info className="w-3.5 h-3.5" />
+            Matrice des Points
           </h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto relative">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50">
-                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 min-w-[140px]">Joueur</th>
+              <tr className="bg-white">
+                <th className="sticky left-0 z-30 p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 min-w-[120px] bg-white">Joueur</th>
                 {seasonProgress?.rounds.map(r => {
                   const name = calendar2026.find(c => c.round === r)?.name;
                   return (
-                    <th key={`head-${r}`} className="p-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center min-w-[80px]">
-                      {name}
+                    <th key={`head-${r}`} className="relative h-24 min-w-[45px] p-0 border-b border-slate-50 bg-white">
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center">
+                        <span className="whitespace-nowrap -rotate-45 origin-center text-[8px] font-black text-slate-300 uppercase tracking-wider">
+                          {name}
+                        </span>
+                      </div>
                     </th>
                   );
                 })}
-                <th className="p-4 text-[10px] font-bold text-slate-900 uppercase tracking-widest border-b border-slate-100 text-center bg-slate-100/50">Total</th>
+                <th className="sticky right-0 z-30 px-3 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 text-center bg-white min-w-[70px]">Total</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-50">
               {seasonProgress?.players.map((p, pIdx) => (
-                <tr key={`row-${p.name}`} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="p-4 text-sm font-bold text-slate-700 flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: playerColors[pIdx % playerColors.length] }} />
-                    {p.name}
+                <tr key={`row-${p.name}`} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="sticky left-0 z-20 p-4 text-[11px] font-black text-slate-900 bg-white group-hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(p.name) }} />
+                      <span className="truncate uppercase">{p.name}</span>
+                    </div>
                   </td>
                   {p.scores.map((s, sIdx) => (
-                    <td key={`score-${p.name}-${sIdx}`} className="p-4 text-center text-xs font-medium text-slate-500 tabular-nums">
+                    <td key={`score-${p.name}-${sIdx}`} className="px-1 py-4 text-center text-[10px] font-black text-slate-400 tabular-nums">
                       {s || "—"}
                     </td>
                   ))}
-                  <td className="p-4 text-center text-sm font-bold text-slate-900 bg-slate-50/50 tabular-nums">
+                  <td className="sticky right-0 z-20 px-3 py-4 text-center text-xs font-black text-white bg-[#2b62e3] tabular-nums group-hover:bg-[#1d4ed8] transition-colors">
                     {p.cumulative[p.cumulative.length - 1]}
                   </td>
                 </tr>
@@ -327,88 +402,32 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Insights Section */}
-      <section className="space-y-6">
-        <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
-          <BarChart3 className="w-4 h-4 text-slate-400" />
-          Analyses de Performance
-        </h2>
-        
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <div className="card-minimal p-5 bg-white border-slate-200/60 shadow-sm">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-              <Target className="w-3 h-3" /> Moyenne / GP
-            </div>
-            <div className="text-3xl font-bold text-slate-900">{(insights?.averageCorrectPerGP || 0).toFixed(1)}</div>
-            <div className="text-[9px] font-bold text-slate-400 mt-1 uppercase">PRONOS CORRECTS</div>
-          </div>
-
-          <div className="card-minimal p-5 bg-white border-slate-200/60 shadow-sm">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-              <Zap className="w-3 h-3 text-amber-500" /> Précision
-            </div>
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="text-2xl font-bold text-slate-900">{(insights?.qualiAccuracy || 0).toFixed(0)}%</div>
-                <div className="text-[8px] font-bold text-slate-400 uppercase">Quali</div>
-              </div>
-              <div className="w-px h-8 bg-slate-100" />
-              <div className="text-right">
-                <div className="text-2xl font-bold text-slate-900">{(insights?.raceAccuracy || 0).toFixed(0)}%</div>
-                <div className="text-[8px] font-bold text-slate-400 uppercase">Course</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card-minimal p-5 lg:col-span-2 bg-white border-slate-200/60 shadow-sm">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-              <Trophy className="w-3 h-3 text-slate-400" /> Pilotes les mieux pronostiqués
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
-              {insights?.bestPredictedDrivers.length ? insights.bestPredictedDrivers.map((d, i) => (
-                <div key={d.name} className="flex-shrink-0 flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold mb-2 ${i === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-50 text-slate-500'}`}>
-                    {d.count}
-                  </div>
-                  <div className="text-[8px] font-bold text-slate-600 uppercase w-12 truncate text-center">{d.name.split(' ').pop()}</div>
-                </div>
-              )) : <div className="text-slate-400 text-[10px] italic py-2">En attente de données...</div>}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* GP History Viewer */}
-      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
-        <div className="bg-slate-50/50 border-b border-slate-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* GP History Viewer & Admin */}
+      <section className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-slate-50/50 p-6 flex items-center justify-between border-b border-slate-50">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setViewerRound(r => Math.max(1, r - 1))}
-              className="p-1.5 hover:bg-white rounded-lg border border-slate-200 transition-all shadow-sm active:scale-95 text-slate-400 hover:text-slate-900"
+              className="p-2 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-              <div className="text-center min-w-[180px]">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Visualisation du Weekend</div>
-                <div className="text-sm font-bold text-slate-800 uppercase tracking-tight">
-                  {calendar2026.find(r => r.round === viewerRound)?.name}
-                </div>
-              </div>
+            <div className="text-center min-w-[140px]">
+              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Historique</div>
+              <div className="text-xs font-black text-slate-900 uppercase">{calendar2026.find(r => r.round === viewerRound)?.name}</div>
+            </div>
             <button 
               onClick={() => setViewerRound(r => Math.min(22, r + 1))}
-              className="p-1.5 hover:bg-white rounded-lg border border-slate-200 transition-all shadow-sm active:scale-95 text-slate-400 hover:text-slate-900"
+              className="p-2 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          
-          <div>
-            {!viewerResult && (
-              <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[9px] font-bold uppercase tracking-wider rounded-md border border-amber-100">En attente de résultats</span>
-            )}
-          </div>
+          {!viewerResult && (
+            <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[8px] font-black uppercase tracking-widest rounded-full border border-amber-100">En attente</span>
+          )}
         </div>
-
+        
         <div className="p-6">
           {Object.keys(viewerPredictions).length === 0 ? (
             <div className="py-16 text-center flex flex-col items-center gap-3 opacity-40">
@@ -429,7 +448,7 @@ export default function Dashboard() {
                         <th className="pb-2 w-8">Pos</th>
                         <th className="pb-2 min-w-[100px]">Officiel</th>
                         {Object.keys(viewerPredictions).map(p => (
-                          <th key={p} className="pb-2 text-center px-2">{p}</th>
+                          <th key={p} className="pb-2 text-center px-2 font-black">{p}</th>
                         ))}
                       </tr>
                     </thead>
@@ -473,7 +492,7 @@ export default function Dashboard() {
                         <th className="pb-2 w-8">Pos</th>
                         <th className="pb-2 min-w-[100px]">Officiel</th>
                         {Object.keys(viewerPredictions).map(p => (
-                          <th key={p} className="pb-2 text-center px-2">{p}</th>
+                          <th key={p} className="pb-2 text-center px-2 font-black">{p}</th>
                         ))}
                       </tr>
                     </thead>
@@ -511,19 +530,24 @@ export default function Dashboard() {
         {/* Bets summary row */}
         {Object.keys(viewerPredictions).length > 0 && (
           <div className="bg-slate-50/30 p-6 border-t border-slate-100">
-            <h4 className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-4 italic">Paris Spéciaux</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4 italic">Paris Spéciaux</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {Object.entries(viewerPredictions).map(([name, pred]) => (
-                <div key={`bet-${name}`} className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between min-h-[90px]">
+                <div key={`bet-${name}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between min-h-[100px]">
                   <div>
-                    <div className="text-[9px] font-bold text-slate-400 uppercase mb-1.5">{name}</div>
-                    <div className="text-[11px] font-medium text-slate-700 leading-snug">"{pred.specialBet || "—"}"</div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase mb-2 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getPlayerColor(name) }} />
+                      {name}
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-700 leading-snug">"{pred.specialBet || "—"}"</div>
                   </div>
-                  <div className="mt-3">
-                    {pred.betWon !== undefined && (
-                      <div className={`inline-flex items-center gap-1 text-[8px] font-bold uppercase px-2 py-0.5 rounded-full border ${pred.betWon ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                        {pred.betWon ? '✓ +2 pts' : '✗ 0 pt'}
+                  <div className="mt-4">
+                    {pred.betWon !== undefined ? (
+                      <div className={`inline-flex items-center gap-1 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${pred.betWon ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                        {pred.betWon ? '✓ Gagné (+2)' : '✗ Perdu (0)'}
                       </div>
+                    ) : (
+                      <div className="text-[8px] font-black uppercase text-slate-300 italic">En attente</div>
                     )}
                   </div>
                 </div>
@@ -540,120 +564,50 @@ export default function Dashboard() {
       <AnimatePresence>
         {selectedPlayerName && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedPlayerName(null)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white rounded-3xl shadow-2xl shadow-slate-900/20 w-full max-w-2xl overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPlayerName(null)} className="absolute inset-0 bg-slate-900/10 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden p-8 border border-slate-100">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">{selectedPlayerName}</h3>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Analyse du Pilote</p>
+                </div>
+                <button onClick={() => setSelectedPlayerName(null)} className="p-2 text-slate-300 hover:text-slate-900">×</button>
+              </div>
+              
               {playerStats ? (
-                <div className="flex flex-col">
-                  {/* Modal Header */}
-                  <div className="bg-slate-900 text-white p-8">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-3xl font-bold tracking-tight">{playerStats.playerName}</h3>
-                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mt-1">Profil Statistiques</p>
-                      </div>
-                      <button 
-                        onClick={() => setSelectedPlayerName(null)}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                      >
-                        <ChevronRight className="w-6 h-6 rotate-180" />
-                      </button>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                      <div className="text-2xl font-black text-slate-900 tabular-nums">{playerStats.totalPoints}</div>
+                      <div className="text-[8px] font-black text-slate-400 uppercase">Points Totaux</div>
                     </div>
-                    
-                    <div className="grid grid-cols-3 gap-8">
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Points</div>
-                        <div className="text-3xl font-bold text-amber-400">{playerStats.totalPoints}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Moyenne / GP</div>
-                        <div className="text-3xl font-bold text-white">{playerStats.avgPointsPerGP.toFixed(1)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Paris Spéciaux</div>
-                        <div className="text-3xl font-bold text-emerald-400">{playerStats.betWinRate.toFixed(0)}%</div>
-                      </div>
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                      <div className="text-2xl font-black text-slate-900 tabular-nums">{playerStats.avgPointsPerGP.toFixed(1)}</div>
+                      <div className="text-[8px] font-black text-slate-400 uppercase">Moyenne / GP</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-900 p-6 rounded-2xl text-white">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-[9px] font-black uppercase text-slate-500">Précision Qualifs</span>
+                      <span className="text-lg font-black text-amber-400">{playerStats.qualiAccuracy.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${playerStats.qualiAccuracy}%` }} />
                     </div>
                   </div>
 
-                  {/* Modal Body */}
-                  <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-hide">
-                    {/* Accuracy Section */}
-                    <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Target className="w-3.5 h-3.5" /> Précision par Session
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <div className="text-2xl font-bold text-slate-900">{playerStats.qualiAccuracy.toFixed(1)}%</div>
-                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Qualifications</div>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <div className="text-2xl font-bold text-slate-900">{playerStats.raceAccuracy.toFixed(1)}%</div>
-                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Course</div>
-                        </div>
-                      </div>
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-[9px] font-black uppercase text-slate-400">Précision Course</span>
+                      <span className="text-lg font-black text-slate-900">{playerStats.raceAccuracy.toFixed(0)}%</span>
                     </div>
-
-                    {/* Recent Form */}
-                    <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-3.5 h-3.5" /> État de Forme (Derniers GP)
-                      </h4>
-                      <div className="h-32 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={playerStats.lastScores}>
-                            <Bar 
-                              dataKey="points" 
-                              fill="#0f172a" 
-                              radius={[4, 4, 0, 0]} 
-                              barSize={30}
-                            />
-                            <XAxis 
-                              dataKey="round" 
-                              hide 
-                            />
-                            <Tooltip 
-                              cursor={{fill: '#f1f5f9'}}
-                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-
-                    {/* Favorites Section */}
-                    <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Zap className="w-3.5 h-3.5 text-amber-500" /> Pilotes les plus joués
-                      </h4>
-                      <div className="space-y-2">
-                        {playerStats.favoriteDrivers.map((d: any) => (
-                          <div key={d.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <span className="text-sm font-bold text-slate-700">{d.name}</span>
-                            <span className="text-xs font-bold text-slate-400">{d.count} fois</span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-slate-900 h-full transition-all duration-1000" style={{ width: `${playerStats.raceAccuracy}%` }} />
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="p-20 flex flex-col items-center justify-center gap-4">
-                  <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Chargement des stats...</p>
-                </div>
-              )}
+              ) : <div className="py-20 text-center text-[10px] font-black text-slate-300 animate-pulse">Chargement...</div>}
             </motion.div>
           </div>
         )}

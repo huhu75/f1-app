@@ -118,6 +118,18 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
                         </optgroup>
                       ))}
                     </select>
+                    {qualiResults[i] && (
+                      <button 
+                        onClick={() => {
+                          const next = [...qualiResults];
+                          next[i] = "";
+                          setQualiResults(next);
+                        }}
+                        className="w-8 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors text-lg"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -153,6 +165,18 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
                         </optgroup>
                       ))}
                     </select>
+                    {raceResults[i] && (
+                      <button 
+                        onClick={() => {
+                          const next = [...raceResults];
+                          next[i] = "";
+                          setRaceResults(next);
+                        }}
+                        className="w-8 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors text-lg"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
