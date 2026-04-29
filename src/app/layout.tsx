@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="light">
+    <html lang="fr" className="light" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-white text-black`}>
         <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
           <div className="container mx-auto flex h-14 max-w-screen-2xl items-center px-4">

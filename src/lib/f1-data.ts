@@ -13,41 +13,35 @@ export const teams2026 = [
 ];
 
 export const calendar2026 = [
-  { round: 1, name: "Grand Prix d'Australie", dateString: "06-08 MAR", startDate: new Date("2026-03-07T05:00:00Z") },
-  { round: 2, name: "Grand Prix de Chine", dateString: "13-15 MAR", startDate: new Date("2026-03-14T07:00:00Z") },
-  { round: 3, name: "Grand Prix du Japon", dateString: "27-29 MAR", startDate: new Date("2026-03-28T06:00:00Z") },
-  { round: 4, name: "Grand Prix de Miami", dateString: "01-03 MAY", startDate: new Date("2026-05-02T20:00:00Z") },
-  { round: 5, name: "Grand Prix du Canada", dateString: "22-24 MAY", startDate: new Date("2026-05-23T20:00:00Z") },
-  { round: 6, name: "Grand Prix de Monaco", dateString: "05-07 JUN", startDate: new Date("2026-06-06T14:00:00Z") },
-  { round: 7, name: "Grand Prix de Barcelone-Catalogne", dateString: "12-14 JUN", startDate: new Date("2026-06-13T14:00:00Z") },
-  { round: 8, name: "Grand Prix d'Autriche", dateString: "26-28 JUN", startDate: new Date("2026-06-27T14:00:00Z") },
-  { round: 9, name: "Grand Prix de Grande-Bretagne", dateString: "03-05 JUL", startDate: new Date("2026-07-04T15:00:00Z") },
-  { round: 10, name: "Grand Prix de Belgique", dateString: "17-19 JUL", startDate: new Date("2026-07-18T14:00:00Z") },
-  { round: 11, name: "Grand Prix de Hongrie", dateString: "24-26 JUL", startDate: new Date("2026-07-25T14:00:00Z") },
-  { round: 12, name: "Grand Prix des Pays-Bas", dateString: "21-23 AUG", startDate: new Date("2026-08-22T14:00:00Z") },
-  { round: 13, name: "Grand Prix d'Italie", dateString: "04-06 SEP", startDate: new Date("2026-09-05T14:00:00Z") },
-  { round: 14, name: "Grand Prix d'Espagne (Madrid)", dateString: "11-13 SEP", startDate: new Date("2026-09-12T14:00:00Z") },
-  { round: 15, name: "Grand Prix d'Azerbaïdjan", dateString: "24-26 SEP", startDate: new Date("2026-09-25T12:00:00Z") },
-  { round: 16, name: "Grand Prix de Singapour", dateString: "09-11 OCT", startDate: new Date("2026-10-10T13:00:00Z") },
-  { round: 17, name: "Grand Prix des États-Unis", dateString: "23-25 OCT", startDate: new Date("2026-10-24T21:00:00Z") },
-  { round: 18, name: "Grand Prix du Mexique", dateString: "30 OCT-01 NOV", startDate: new Date("2026-10-31T21:00:00Z") },
-  { round: 19, name: "Grand Prix du Brésil", dateString: "06-08 NOV", startDate: new Date("2026-11-07T18:00:00Z") },
-  { round: 20, name: "Grand Prix de Las Vegas", dateString: "19-21 NOV", startDate: new Date("2026-11-21T04:00:00Z") },
-  { round: 21, name: "Grand Prix du Qatar", dateString: "27-29 NOV", startDate: new Date("2026-11-28T18:00:00Z") },
-  { round: 22, name: "Grand Prix d'Abou Dhabi", dateString: "04-06 DEC", startDate: new Date("2026-12-05T14:00:00Z") },
+  { round: 3,  name: "Japon",                    dateString: "27-29 MAR",      startDate: new Date("2026-03-28T06:00:00Z") }, // qualifs 07:00 CET
+  { round: 4,  name: "Miami",                    dateString: "01-03 MAI",      startDate: new Date("2026-05-02T20:00:00Z") }, // qualifs 22:00 CEST
+  { round: 5,  name: "Canada",                   dateString: "22-24 MAI",      startDate: new Date("2026-05-23T20:00:00Z") }, // qualifs 22:00 CEST
+  { round: 6,  name: "Monaco",                   dateString: "05-07 JUN",      startDate: new Date("2026-06-06T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 7,  name: "Barcelone",                dateString: "12-14 JUN",      startDate: new Date("2026-06-13T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 8,  name: "Autriche",                 dateString: "26-28 JUN",      startDate: new Date("2026-06-27T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 9,  name: "Grande-Bretagne",          dateString: "03-05 JUL",      startDate: new Date("2026-07-04T15:00:00Z") }, // qualifs 17:00 CEST
+  { round: 10, name: "Belgique",                 dateString: "17-19 JUL",      startDate: new Date("2026-07-18T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 11, name: "Hongrie",                  dateString: "24-26 JUL",      startDate: new Date("2026-07-25T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 12, name: "Pays-Bas",                 dateString: "21-23 AOÛ",      startDate: new Date("2026-08-22T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 13, name: "Italie",                   dateString: "04-06 SEP",      startDate: new Date("2026-09-05T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 14, name: "Madrid",                   dateString: "11-13 SEP",      startDate: new Date("2026-09-12T14:00:00Z") }, // qualifs 16:00 CEST
+  { round: 15, name: "Azerbaïdjan",              dateString: "24-26 SEP",      startDate: new Date("2026-09-25T12:00:00Z") }, // qualifs 14:00 CEST
+  { round: 16, name: "Singapour",                dateString: "09-11 OCT",      startDate: new Date("2026-10-10T13:00:00Z") }, // qualifs 15:00 CEST
+  { round: 17, name: "Austin",                   dateString: "23-25 OCT",      startDate: new Date("2026-10-24T21:00:00Z") }, // qualifs 23:00 CEST
+  { round: 18, name: "Mexique",                  dateString: "30 OCT-01 NOV",  startDate: new Date("2026-10-31T21:00:00Z") }, // qualifs 22:00 CET
+  { round: 19, name: "Brésil",                   dateString: "06-08 NOV",      startDate: new Date("2026-11-07T18:00:00Z") }, // qualifs 19:00 CET
+  { round: 20, name: "Las Vegas",                dateString: "20-22 NOV",      startDate: new Date("2026-11-21T04:00:00Z") }, // qualifs 05:00 CET
+  { round: 21, name: "Qatar",                    dateString: "27-29 NOV",      startDate: new Date("2026-11-28T18:00:00Z") }, // qualifs 19:00 CET
+  { round: 22, name: "Abou Dhabi",               dateString: "04-06 DÉC",      startDate: new Date("2026-12-05T14:00:00Z") }, // qualifs 15:00 CET
 ];
 
 export function getNextRace() {
   const now = new Date();
-  
-  // Chercher la première course dont la date de début est dans le futur
   for (const race of calendar2026) {
     if (race.startDate > now) {
       return race;
     }
   }
-  
-  // Si la saison est finie
   return calendar2026[calendar2026.length - 1];
 }
 

@@ -97,7 +97,7 @@ export default function Dashboard() {
     return data;
   }) || [];
 
-  const playerColors = ["#0f172a", "#3b82f6", "#ef4444", "#10b981"];
+  const playerColors = ["#0f172a", "#4338ca", "#be185d", "#0d9488"]; // Ardoise, Indigo, Framboise, Émeraude profond
 
   return (
     <div className="space-y-12 text-slate-900 bg-slate-50/30 pb-20 max-w-6xl mx-auto px-4 sm:px-6">
@@ -204,22 +204,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Progress Chart */}
-      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl p-6">
-        <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest mb-8">
-          <TrendingUp className="w-4 h-4 text-slate-400" />
-          Évolution des Scores Cumulés
-        </h2>
-        <div className="h-[300px] w-full">
+      <section className="bg-white border border-slate-200/60 shadow-sm rounded-2xl p-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <h2 className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-widest">
+            <TrendingUp className="w-4 h-4 text-slate-400" />
+            Évolution des Scores Cumulés
+          </h2>
+          <div className="flex items-center gap-4">
+            {seasonProgress?.players.map((p, i) => (
+              <div key={p.name} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: playerColors[i % playerColors.length] }} />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{p.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="h-[350px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f1f5f9" />
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fontSize: 9, fill: '#94a3b8'}} 
-                dy={10}
+                tick={{fontSize: 9, fill: '#94a3b8', fontWeight: 600}} 
+                dy={15}
                 interval={0}
                 angle={-25}
                 textAnchor="end"
@@ -228,21 +238,42 @@ export default function Dashboard() {
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fontSize: 10, fill: '#94a3b8'}} 
+                tick={{fontSize: 10, fill: '#cbd5e1', fontWeight: 600}} 
+                dx={-10}
               />
               <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-2xl shadow-slate-200/50 min-w-[160px]">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 border-b border-slate-50 pb-2">{label}</p>
+                        <div className="space-y-2.5">
+                          {payload.sort((a, b) => (b.value as number) - (a.value as number)).map((entry: any) => (
+                            <div key={entry.name} className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span className="text-[11px] font-bold text-slate-700">{entry.name}</span>
+                              </div>
+                              <span className="text-[11px] font-black text-slate-900 tabular-nums">{entry.value} <span className="text-[8px] text-slate-400 uppercase">pts</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
               />
-              <Legend iconType="circle" />
               {seasonProgress?.players.map((p, i) => (
                 <Line 
                   key={p.name} 
                   type="monotone" 
                   dataKey={p.name} 
                   stroke={playerColors[i % playerColors.length]} 
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  strokeWidth={1.8}
+                  dot={{ r: 2, strokeWidth: 2, fill: 'white' }}
+                  activeDot={{ r: 4, strokeWidth: 0, fill: playerColors[i % playerColors.length] }}
+                  connectNulls
                 />
               ))}
             </LineChart>
@@ -264,7 +295,7 @@ export default function Dashboard() {
               <tr className="bg-slate-50/50">
                 <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 min-w-[140px]">Joueur</th>
                 {seasonProgress?.rounds.map(r => {
-                  const name = calendar2026.find(c => c.round === r)?.name.split(' ').pop();
+                  const name = calendar2026.find(c => c.round === r)?.name;
                   return (
                     <th key={`head-${r}`} className="p-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center min-w-[80px]">
                       {name}
@@ -357,12 +388,12 @@ export default function Dashboard() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-center min-w-[180px]">
-              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Visualisation du Weekend</div>
-              <div className="text-sm font-bold text-slate-800 uppercase tracking-tight">
-                {calendar2026.find(r => r.round === viewerRound)?.name}
+              <div className="text-center min-w-[180px]">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Visualisation du Weekend</div>
+                <div className="text-sm font-bold text-slate-800 uppercase tracking-tight">
+                  {calendar2026.find(r => r.round === viewerRound)?.name}
+                </div>
               </div>
-            </div>
             <button 
               onClick={() => setViewerRound(r => Math.min(22, r + 1))}
               className="p-1.5 hover:bg-white rounded-lg border border-slate-200 transition-all shadow-sm active:scale-95 text-slate-400 hover:text-slate-900"
