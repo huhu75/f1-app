@@ -5,7 +5,7 @@ import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, Chevr
 import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
 interface DetailedStanding {
@@ -50,14 +50,14 @@ export default function Dashboard() {
     setInsights(stats);
     setSeasonProgress(progress);
     
-    const roundsWithResults = Object.keys(allResults).map(Number);
-    const lastRound = roundsWithResults.length > 0 ? Math.max(...roundsWithResults) : 1;
-    setViewerRound(lastRound);
-    setViewerPredictions(allPreds[lastRound] || {});
-    setViewerResult(allResults[lastRound] || null);
-
+    // Set default viewer round to NEXT race (matching Pronostics)
     const nextR = getNextRace();
     setNextRace(nextR);
+    setViewerRound(nextR.round);
+    
+    setViewerPredictions(allPreds[nextR.round] || {});
+    setViewerResult(allResults[nextR.round] || null);
+
     setCountdown(formatCountdown(nextR.startDate));
     setUserPredictions(allPreds[nextR.round]?.["Hugo"] || null);
     
@@ -95,16 +95,6 @@ export default function Dashboard() {
     }
   }, [selectedPlayerName]);
 
-  // Format chart data
-  const chartData = seasonProgress?.rounds.map((round, idx) => {
-    const gpName = calendar2026.find(r => r.round === round)?.name || `R${round}`;
-    const data: any = { name: gpName };
-    seasonProgress.players.forEach(p => {
-      data[p.name] = p.cumulative[idx];
-    });
-    return data;
-  }) || [];
-
   const getPlayerColor = (name: string) => {
     const colors: Record<string, string> = {
       "Hugo": "#334155",      // Slate
@@ -121,7 +111,7 @@ export default function Dashboard() {
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
       <Loader2 className="w-10 h-10 text-slate-200 animate-spin" />
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Calcul des résultats détaillés...</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initialisation...</p>
     </div>
   );
 
@@ -148,7 +138,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* STATS OVERVIEW - IMPROVED CARDS */}
+      {/* STATS OVERVIEW */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {standings.map((p, i) => (
           <button 
@@ -175,7 +165,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Session Breakdown - MORE VISIBLE */}
             <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-50">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -186,9 +175,6 @@ export default function Dashboard() {
                     <div className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Qualifs</div>
                     <div className="text-sm font-black text-slate-900 tabular-nums">{p.qualiPoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
                   </div>
-                </div>
-                <div className="w-full bg-slate-50 h-1 rounded-full overflow-hidden">
-                  <div className="h-full bg-slate-300" style={{ width: `${p.points > 0 ? (p.qualiPoints/p.points)*100 : 0}%` }} />
                 </div>
               </div>
 
@@ -202,13 +188,9 @@ export default function Dashboard() {
                     <div className="text-sm font-black text-slate-900 tabular-nums">{p.racePoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
                   </div>
                 </div>
-                <div className="w-full bg-slate-50 h-1 rounded-full overflow-hidden">
-                  <div className="h-full bg-slate-900" style={{ width: `${p.points > 0 ? (p.racePoints/p.points)*100 : 0}%` }} />
-                </div>
               </div>
             </div>
 
-            {/* Special Bet info */}
             <div className="mt-4 flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
                <Zap className="w-3 h-3 text-amber-500" />
                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Paris gagnés :</span>
@@ -253,104 +235,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* CHART SECTION */}
-      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Évolution</h2>
-            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Progression du Championnat</p>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            {PLAYERS.map((name, i) => (
-              <div key={name} className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getPlayerColor(name) }} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">{name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="h-[350px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-              <XAxis 
-                dataKey="name" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }}
-                dy={15}
-              />
-              <YAxis 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }}
-              />
-              <Tooltip 
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-white border border-slate-100 p-4 rounded-xl shadow-xl min-w-[140px]">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">{label}</p>
-                        <div className="space-y-2">
-                          {payload.map((entry: any) => (
-                            <div key={entry.name} className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                                <span className="text-[10px] font-black text-slate-900 uppercase">{entry.name}</span>
-                              </div>
-                              <span className="text-[10px] font-black text-slate-900 tabular-nums">{entry.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              {PLAYERS.map((name) => (
-                <Line 
-                  key={name} 
-                  type="monotone" 
-                  dataKey={name} 
-                  stroke={getPlayerColor(name)} 
-                  strokeWidth={3}
-                  dot={{ r: 3, strokeWidth: 2, fill: 'white' }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
-                  connectNulls
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* SESSION COMPARISON BAR CHART */}
-      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
-        <div className="mb-10">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
-          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
-        </div>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }} />
-              <Tooltip 
-                cursor={{fill: '#f8fafc'}}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Bar dataKey="qualiPoints" name="Qualifs" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="racePoints" name="Course" fill="#1e293b" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="betPoints" name="Paris" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={24} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* TABLE SECTION - SOFT FLAT */}
+      {/* TABLE SECTION */}
       <section className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
           <h2 className="text-[10px] font-black flex items-center gap-2 text-slate-400 uppercase tracking-[0.2em]">
@@ -402,6 +287,36 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* SESSION COMPARISON BAR CHART */}
+      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
+        <div className="mb-10">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
+          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
+        </div>
+        <div className="h-[350px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }} />
+              <Tooltip 
+                cursor={{fill: '#f8fafc'}}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Legend 
+                verticalAlign="top" 
+                align="right" 
+                iconType="circle"
+                wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+              />
+              <Bar dataKey="qualiPoints" name="Qualifs" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="racePoints" name="Course" fill="#2b62e3" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="betPoints" name="Paris" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
       {/* GP History Viewer & Admin */}
       <section className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
         <div className="bg-slate-50/50 p-6 flex items-center justify-between border-b border-slate-50">
@@ -436,7 +351,6 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid gap-10 lg:grid-cols-2">
-              {/* Quali Results Table */}
               <div className="space-y-4">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <Zap className="w-3 h-3" /> Qualifications
@@ -480,7 +394,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Race Results Table */}
               <div className="space-y-4">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <Flag className="w-3 h-3" /> Course
@@ -527,7 +440,6 @@ export default function Dashboard() {
           )}
         </div>
         
-        {/* Bets summary row */}
         {Object.keys(viewerPredictions).length > 0 && (
           <div className="bg-slate-50/30 p-6 border-t border-slate-100">
             <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4 italic">Paris Spéciaux</h4>

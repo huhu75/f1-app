@@ -11,6 +11,7 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
   const [qualiResults, setQualiResults] = useState<string[]>(Array(10).fill(""));
   const [raceResults, setRaceResults] = useState<string[]>(Array(10).fill(""));
   const [playersPredictions, setPlayersPredictions] = useState<Record<string, Prediction>>({});
+  const [pendingBets, setPendingBets] = useState<Record<string, boolean | undefined>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -27,184 +28,214 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
       }
 
       const allPreds = await storageService.getAllPredictions();
-      setPlayersPredictions(allPreds[selectedRound] || {});
+      const roundPreds = allPreds[selectedRound] || {};
+      setPlayersPredictions(roundPreds);
+      
+      // Initialize pending bets state with current values from DB
+      const initialBets: Record<string, boolean | undefined> = {};
+      Object.entries(roundPreds).forEach(([name, pred]) => {
+        initialBets[name] = pred.betWon;
+      });
+      setPendingBets(initialBets);
     };
     loadData();
   }, [selectedRound]);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await storageService.saveRaceResult({
-      round: selectedRound,
-      qualiPositions: qualiResults,
-      racePositions: raceResults
-    });
-    setIsSaving(false);
-    setShowSuccess(true);
-    onSaved();
-    setTimeout(() => setShowSuccess(false), 3000);
+    try {
+      // 1. Save GP Results
+      await storageService.saveRaceResult({
+        round: selectedRound,
+        qualiPositions: qualiResults,
+        racePositions: raceResults
+      });
+
+      // 2. Save all pending bet statuses
+      const updatePromises = Object.entries(pendingBets).map(([name, won]) => {
+        if (won !== undefined) {
+          return storageService.updateBetStatus(selectedRound, name, won);
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(updatePromises);
+
+      setShowSuccess(true);
+      onSaved();
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de l'enregistrement");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const toggleBet = async (playerName: string, won: boolean) => {
-    await storageService.updateBetStatus(selectedRound, playerName, won);
-    const allPreds = await storageService.getAllPredictions();
-    setPlayersPredictions(allPreds[selectedRound] || {});
-    onSaved();
+  const toggleBetLocal = (playerName: string, won: boolean) => {
+    setPendingBets(prev => ({
+      ...prev,
+      [playerName]: prev[playerName] === won ? undefined : won
+    }));
   };
 
   const drivers = teams2026.flatMap(t => t.drivers).sort();
 
   return (
-    <div className="card-minimal overflow-hidden transition-all duration-300">
+    <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm transition-all duration-300">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-bold">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xl">
             !
           </div>
           <div className="text-left">
-            <h2 className="text-lg font-bold text-black uppercase">Gestion des Résultats</h2>
-            <p className="text-sm text-gray-500">Entrez les résultats officiels et validez les paris.</p>
+            <h2 className="text-base font-black text-slate-900 uppercase tracking-tight">Gestion des Résultats</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Entrez les résultats officiels et validez les paris.</p>
           </div>
         </div>
-        {isOpen ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
+        {isOpen ? <ChevronUp className="text-slate-300" /> : <ChevronDown className="text-slate-300" />}
       </button>
 
       {isOpen && (
-        <div className="p-6 pt-0 space-y-8 animate-in fade-in slide-in-from-top-2">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Grand Prix</label>
+        <div className="p-8 pt-0 space-y-10 animate-in fade-in slide-in-from-top-2">
+          <div className="flex flex-col gap-3">
+            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Sélectionner le Grand Prix</label>
             <select 
               value={selectedRound}
               onChange={(e) => setSelectedRound(parseInt(e.target.value))}
-              className="w-full p-3 bg-white border border-gray-200 rounded-md outline-none focus:ring-2 focus:ring-black"
+              className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all"
             >
               {calendar2026.map(r => (
-                <option key={r.round} value={r.round}>{r.name}</option>
+                <option key={r.round} value={r.round}>R{r.round} • {r.name}</option>
               ))}
             </select>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase border-b pb-2">Qualifs (Top 10)</h3>
-              <div className="space-y-2">
+          <div className="grid md:grid-cols-2 gap-10">
+            <div className="space-y-6">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 border-b border-slate-50 pb-3">Qualifs (Top 10)</h3>
+              <div className="space-y-3">
                 {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={`res-quali-${i}`} className="flex items-center gap-2">
-                    <span className="text-xs font-mono w-6 text-gray-400">P{i+1}</span>
-                    <select 
-                      value={qualiResults[i]}
-                      onChange={(e) => {
-                        const next = [...qualiResults];
-                        next[i] = e.target.value;
-                        setQualiResults(next);
-                      }}
-                      className="flex-1 p-2 bg-gray-50 border border-gray-100 rounded text-sm"
-                    >
-                      <option value="">-</option>
-                      {teams2026.map((team) => (
-                        <optgroup key={team.name} label={team.name}>
-                          {team.drivers.map(driver => (
-                            <option 
-                              key={driver} 
-                              value={driver}
-                              disabled={qualiResults.includes(driver) && qualiResults[i] !== driver}
-                            >
-                              {driver}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    {qualiResults[i] && (
-                      <button 
-                        onClick={() => {
+                  <div key={`res-quali-${i}`} className="flex items-center gap-3 relative">
+                    <span className="text-[9px] font-black w-6 text-slate-300 tabular-nums">P{i+1}</span>
+                    <div className="flex-1 relative">
+                      <select 
+                        value={qualiResults[i]}
+                        onChange={(e) => {
                           const next = [...qualiResults];
-                          next[i] = "";
+                          next[i] = e.target.value;
                           setQualiResults(next);
                         }}
-                        className="w-8 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors text-lg"
+                        className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none"
                       >
-                        ×
-                      </button>
-                    )}
+                        <option value="">Pilote...</option>
+                        {teams2026.map((team) => (
+                          <optgroup key={team.name} label={team.name} className="text-[10px] font-black uppercase tracking-widest">
+                            {team.drivers.map(driver => (
+                              <option 
+                                key={driver} 
+                                value={driver}
+                                disabled={qualiResults.includes(driver) && qualiResults[i] !== driver}
+                              >
+                                {driver}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {qualiResults[i] && (
+                        <button 
+                          onClick={() => {
+                            const next = [...qualiResults];
+                            next[i] = "";
+                            setQualiResults(next);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase border-b pb-2">Course (Top 10)</h3>
-              <div className="space-y-2">
+            <div className="space-y-6">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 border-b border-slate-50 pb-3">Course (Top 10)</h3>
+              <div className="space-y-3">
                 {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={`res-race-${i}`} className="flex items-center gap-2">
-                    <span className="text-xs font-mono w-6 text-gray-400">P{i+1}</span>
-                    <select 
-                      value={raceResults[i]}
-                      onChange={(e) => {
-                        const next = [...raceResults];
-                        next[i] = e.target.value;
-                        setRaceResults(next);
-                      }}
-                      className="flex-1 p-2 bg-gray-50 border border-gray-100 rounded text-sm"
-                    >
-                      <option value="">-</option>
-                      {teams2026.map((team) => (
-                        <optgroup key={team.name} label={team.name}>
-                          {team.drivers.map(driver => (
-                            <option 
-                              key={driver} 
-                              value={driver}
-                              disabled={raceResults.includes(driver) && raceResults[i] !== driver}
-                            >
-                              {driver}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    {raceResults[i] && (
-                      <button 
-                        onClick={() => {
+                  <div key={`res-race-${i}`} className="flex items-center gap-3 relative">
+                    <span className="text-[9px] font-black w-6 text-slate-300 tabular-nums">P{i+1}</span>
+                    <div className="flex-1 relative">
+                      <select 
+                        value={raceResults[i]}
+                        onChange={(e) => {
                           const next = [...raceResults];
-                          next[i] = "";
+                          next[i] = e.target.value;
                           setRaceResults(next);
                         }}
-                        className="w-8 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors text-lg"
+                        className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none"
                       >
-                        ×
-                      </button>
-                    )}
+                        <option value="">Pilote...</option>
+                        {teams2026.map((team) => (
+                          <optgroup key={team.name} label={team.name} className="text-[10px] font-black uppercase tracking-widest">
+                            {team.drivers.map(driver => (
+                              <option 
+                                key={driver} 
+                                value={driver}
+                                disabled={raceResults.includes(driver) && raceResults[i] !== driver}
+                              >
+                                {driver}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {raceResults[i] && (
+                        <button 
+                          onClick={() => {
+                            const next = [...raceResults];
+                            next[i] = "";
+                            setRaceResults(next);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 bg-gray-50 p-4 rounded-md border border-gray-100">
-            <h3 className="text-sm font-bold uppercase">Validation des Paris Spéciaux</h3>
-            <div className="space-y-3">
+          <div className="space-y-6 bg-slate-50/50 p-8 rounded-3xl border border-slate-100">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Validation des Paris Spéciaux</h3>
+            <div className="space-y-4">
               {Object.keys(playersPredictions).length === 0 ? (
-                <p className="text-xs text-gray-500 italic">Aucun pronostic pour ce GP.</p>
+                <p className="text-[10px] font-black uppercase text-slate-300 italic tracking-widest">Aucun pronostic enregistré</p>
               ) : (
                 Object.entries(playersPredictions).map(([name, pred]) => (
-                  <div key={name} className="flex items-center justify-between p-3 bg-white rounded border border-gray-200">
-                    <div>
-                      <div className="text-xs font-bold text-gray-900">{name}</div>
-                      <div className="text-xs text-gray-500 italic">"{pred.specialBet || "Pas de pari"}"</div>
+                  <div key={name} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="max-w-[60%]">
+                      <div className="text-[10px] font-black text-slate-900 uppercase mb-1">{name}</div>
+                      <div className="text-xs font-bold text-slate-500 leading-snug">"{pred.specialBet || "Pas de pari"}"</div>
                     </div>
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => toggleBet(name, true)}
-                        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${pred.betWon === true ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-green-100'}`}
+                        onClick={() => toggleBetLocal(name, true)}
+                        className={`px-4 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pendingBets[name] === true ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
                       >
                         Gagné
                       </button>
                       <button 
-                        onClick={() => toggleBet(name, false)}
-                        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${pred.betWon === false ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-red-100'}`}
+                        onClick={() => toggleBetLocal(name, false)}
+                        className={`px-4 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pendingBets[name] === false ? 'bg-rose-500 text-white shadow-lg shadow-rose-100' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600'}`}
                       >
                         Perdu
                       </button>
@@ -215,20 +246,20 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-3">
+          <div className="flex flex-col items-end gap-4">
             {showSuccess && (
-              <div className="flex items-center gap-2 text-green-600 font-bold text-xs animate-in fade-in slide-in-from-right-4">
+              <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em] animate-in fade-in slide-in-from-right-4">
                 <CheckCircle2 className="w-4 h-4" />
-                Résultats enregistrés !
+                Mise à jour réussie
               </div>
             )}
             <button 
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-md font-bold uppercase text-sm hover:bg-gray-800 transition-all disabled:opacity-50"
+              className="w-full sm:w-auto h-14 px-10 bg-[#2b62e3] text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-[#1d4ed8] shadow-lg shadow-blue-100 transition-all disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              {isSaving ? "Enregistrement..." : "Enregistrer les résultats"}
+              <Save className="w-4 h-4 mr-2 inline" />
+              {isSaving ? "Synchronisation..." : "Enregistrer les résultats"}
             </button>
           </div>
         </div>

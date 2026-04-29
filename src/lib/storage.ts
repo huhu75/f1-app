@@ -1,8 +1,9 @@
 import { calendar2026 } from "./f1-data";
+import { supabase } from "./supabase";
 
 /**
  * Service de stockage pour les pronostics.
- * Actuellement utilise le localStorage, mais conçu pour être migré vers Supabase.
+ * Désormais connecté à Supabase pour la synchronisation multi-joueurs.
  */
 
 export interface PredictionHistory {
@@ -11,7 +12,7 @@ export interface PredictionHistory {
   qualiPositions: string[];
   racePositions: string[];
   specialBet: string;
-  changes: string; // Summary of what changed
+  changes: string;
 }
 
 export interface Prediction {
@@ -39,77 +40,135 @@ export interface DashboardInsights {
   raceAccuracy: number;
 }
 
-const PREDICTIONS_KEY = 'f1_2026_all_predictions';
-const RESULTS_KEY = 'f1_2026_results';
 export const PLAYERS = ["Hugo", "François", "Carole"];
 
 export const storageService = {
   async savePrediction(prediction: Omit<Prediction, 'editCount' | 'history'>): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    if (typeof window === 'undefined') return;
+    // 1. Get existing to compute history
+    const { data: existing } = await supabase
+      .from('predictions')
+      .select('*')
+      .eq('round', prediction.round)
+      .eq('player_name', prediction.playerName)
+      .single();
 
-    const all = await this.getAllPredictions();
-    if (!all[prediction.round]) all[prediction.round] = {};
-    
-    const existing = all[prediction.round][prediction.playerName];
-    
-    // Calculate changes summary
     let changes = "Initiale";
+    let editCount = 1;
+    let history: PredictionHistory[] = [];
+
     if (existing) {
       const diffs: string[] = [];
-      const qDiff = prediction.qualiPositions.filter((p, i) => p !== existing.qualiPositions[i]).length;
-      const rDiff = prediction.racePositions.filter((p, i) => p !== existing.racePositions[i]).length;
+      const qDiff = prediction.qualiPositions.filter((p, i) => p !== existing.quali_positions[i]).length;
+      const rDiff = prediction.racePositions.filter((p, i) => p !== existing.race_positions[i]).length;
       if (qDiff > 0) diffs.push(`${qDiff} quali`);
       if (rDiff > 0) diffs.push(`${rDiff} course`);
-      if (prediction.specialBet !== existing.specialBet) diffs.push(`pari`);
+      if (prediction.specialBet !== existing.special_bet) diffs.push(`pari`);
+      
       changes = diffs.length > 0 ? diffs.join(", ") : "Pas de changement";
+      editCount = (existing.edit_count || 0) + 1;
+      history = existing.history || [];
     }
 
-    // Logic for history and edit count
     const newHistory: PredictionHistory = {
       timestamp: new Date().toISOString(),
-      editCount: (existing?.editCount || 0) + 1,
+      editCount: editCount,
       qualiPositions: [...prediction.qualiPositions],
       racePositions: [...prediction.racePositions],
       specialBet: prediction.specialBet,
       changes: changes
     };
 
-    const finalPrediction: Prediction = {
-      ...prediction,
-      editCount: (existing?.editCount || 0) + 1,
-      history: existing?.history ? [...existing.history, newHistory] : [newHistory]
-    };
+    history.push(newHistory);
 
-    all[prediction.round][prediction.playerName] = finalPrediction;
-    localStorage.setItem(PREDICTIONS_KEY, JSON.stringify(all));
+    // 2. Upsert to Supabase
+    const { error } = await supabase
+      .from('predictions')
+      .upsert({
+        round: prediction.round,
+        player_name: prediction.playerName,
+        quali_positions: prediction.qualiPositions,
+        race_positions: prediction.racePositions,
+        special_bet: prediction.specialBet,
+        bet_won: existing?.bet_won, // Preserve bet status if exists
+        updated_at: new Date().toISOString(),
+        edit_count: editCount,
+        history: history
+      }, { onConflict: 'round,player_name' });
+
+    if (error) throw error;
   },
 
   async getAllPredictions(): Promise<Record<number, Record<string, Prediction>>> {
-    if (typeof window === 'undefined') return {};
-    const data = localStorage.getItem(PREDICTIONS_KEY);
-    return data ? JSON.parse(data) : {};
+    const { data, error } = await supabase
+      .from('predictions')
+      .select('*');
+
+    if (error) {
+      console.error("Error fetching predictions:", error);
+      return {};
+    }
+
+    // Transform flat array to nested record
+    const result: Record<number, Record<string, Prediction>> = {};
+    data.forEach(row => {
+      if (!result[row.round]) result[row.round] = {};
+      result[row.round][row.player_name] = {
+        round: row.round,
+        playerName: row.player_name,
+        qualiPositions: row.quali_positions,
+        racePositions: row.race_positions,
+        specialBet: row.special_bet,
+        betWon: row.bet_won,
+        updatedAt: row.updated_at,
+        editCount: row.edit_count,
+        history: row.history
+      };
+    });
+    return result;
   },
 
   async saveRaceResult(result: RaceResult): Promise<void> {
-    if (typeof window === 'undefined') return;
-    const results = await this.getRaceResults();
-    results[result.round] = result;
-    localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
+    const { error } = await supabase
+      .from('race_results')
+      .upsert({
+        round: result.round,
+        quali_positions: result.qualiPositions,
+        race_positions: result.racePositions,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
   },
 
   async getRaceResults(): Promise<Record<number, RaceResult>> {
-    if (typeof window === 'undefined') return {};
-    const data = localStorage.getItem(RESULTS_KEY);
-    return data ? JSON.parse(data) : {};
+    const { data, error } = await supabase
+      .from('race_results')
+      .select('*');
+
+    if (error) {
+      console.error("Error fetching results:", error);
+      return {};
+    }
+
+    const result: Record<number, RaceResult> = {};
+    data.forEach(row => {
+      result[row.round] = {
+        round: row.round,
+        qualiPositions: row.quali_positions,
+        racePositions: row.race_positions
+      };
+    });
+    return result;
   },
 
   async updateBetStatus(round: number, playerName: string, won: boolean): Promise<void> {
-    const all = await this.getAllPredictions();
-    if (all[round] && all[round][playerName]) {
-      all[round][playerName].betWon = won;
-      localStorage.setItem(PREDICTIONS_KEY, JSON.stringify(all));
-    }
+    const { error } = await supabase
+      .from('predictions')
+      .update({ bet_won: won })
+      .eq('round', round)
+      .eq('player_name', playerName);
+
+    if (error) throw error;
   },
 
   async getLeaderboard(): Promise<{ name: string; points: number; qualiPoints: number; racePoints: number; betPoints: number }[]> {
@@ -127,15 +186,12 @@ export const storageService = {
         const result = allResults[round];
         
         if (pred && result) {
-          // Points for Quali
           pred.qualiPositions.forEach((driver, idx) => {
             if (driver && driver === result.qualiPositions[idx]) qualiPoints += 1;
           });
-          // Points for Race
           pred.racePositions.forEach((driver, idx) => {
             if (driver && driver === result.racePositions[idx]) racePoints += 1;
           });
-          // Points for Special Bet
           if (pred.betWon) betPoints += 2;
         }
       });
@@ -162,7 +218,7 @@ export const storageService = {
     Object.entries(allResults).forEach(([roundStr, result]) => {
       const round = parseInt(roundStr);
       const preds = allPredictions[round];
-      if (!preds || Object.keys(preds).length === 0) return; // Skip rounds without predictions
+      if (!preds || Object.keys(preds).length === 0) return;
       
       roundsWithResults++;
 
@@ -189,9 +245,6 @@ export const storageService = {
       .slice(0, 5);
 
     const totalCorrect = totalCorrectQuali + totalCorrectRace;
-    
-    // Calculate average based on actual players who played in those rounds
-    const totalPredictionsMade = totalPositionsPredicted / 10; // 10 positions per player session (approx)
     
     return {
       bestPredictedDrivers: bestDrivers,
