@@ -7,7 +7,7 @@ import { storageService, Prediction } from "@/lib/storage";
 
 export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedRound, setSelectedRound] = useState(1);
+  const [selectedRound, setSelectedRound] = useState(calendar2026[0].round);
   const [qualiResults, setQualiResults] = useState<string[]>(Array(10).fill(""));
   const [raceResults, setRaceResults] = useState<string[]>(Array(10).fill(""));
   const [playersPredictions, setPlayersPredictions] = useState<Record<string, Prediction>>({});
