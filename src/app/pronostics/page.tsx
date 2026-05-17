@@ -26,8 +26,10 @@ export default function Pronostics() {
 
   // Derived state for the selected race
   const selectedRace = calendar.find(r => r.round === selectedRound) ?? calendar[0] ?? null;
-  // On verrouille dès le début des qualifications (qualiDate), pas de la course
-  const isLocked = selectedRace ? new Date() > selectedRace.qualiDate : false;
+  // Les qualifications sont verrouillées après leur début
+  const isQualiLocked = selectedRace ? new Date() > selectedRace.qualiDate : false;
+  // La course et le pari spécial sont verrouillés après le début de la course
+  const isRaceLocked = selectedRace ? new Date() > selectedRace.startDate : false;
 
   // Pré-sélectionner le prochain GP une fois le calendrier chargé
   useEffect(() => {
@@ -40,10 +42,17 @@ export default function Pronostics() {
     }
   }, [calendar]);
 
-  // Update countdown dynamically based on selection (compte à rebours jusqu'aux qualifs)
+  // Update countdown dynamically based on selection
   useEffect(() => {
     if (!selectedRace) return;
-    const updateCountdown = () => setCountdown(formatCountdown(selectedRace.qualiDate));
+    const updateCountdown = () => {
+      const now = new Date();
+      if (now < selectedRace.qualiDate) {
+        setCountdown(formatCountdown(selectedRace.qualiDate));
+      } else {
+        setCountdown(formatCountdown(selectedRace.startDate));
+      }
+    };
     updateCountdown();
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
@@ -71,21 +80,21 @@ export default function Pronostics() {
   }, [selectedRound, currentPlayer]);
 
   const handleQualiChange = (index: number, value: string) => {
-    if (isLocked) return;
+    if (isQualiLocked) return;
     const newSelections = [...qualiSelections];
     newSelections[index] = value;
     setQualiSelections(newSelections);
   };
 
   const handleRaceChange = (index: number, value: string) => {
-    if (isLocked) return;
+    if (isRaceLocked) return;
     const newSelections = [...raceSelections];
     newSelections[index] = value;
     setRaceSelections(newSelections);
   };
 
   const handleSave = async () => {
-    if (isLocked) return;
+    if (isRaceLocked) return;
     setIsSaving(true);
     try {
       await storageService.savePrediction({
@@ -185,26 +194,42 @@ export default function Pronostics() {
 
       {/* COUNTDOWN SECTION - DYNAMIC & LOCKING */}
       <div className={`border rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl transition-all ${
-        isLocked 
+        isRaceLocked 
           ? 'bg-rose-50 border-rose-100 shadow-rose-50' 
-          : 'bg-[#2b62e3] border-blue-400/20 shadow-blue-100'
+          : isQualiLocked 
+            ? 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-400/20 text-white shadow-amber-100' 
+            : 'bg-[#2b62e3] border-blue-400/20 shadow-blue-100'
       }`}>
         <div className="flex items-center gap-6">
           <div className={`w-14 h-14 rounded-xl flex items-center justify-center border ${
-            isLocked ? 'bg-rose-100 border-rose-200' : 'bg-white/10 border-white/20'
+            isRaceLocked 
+              ? 'bg-rose-100 border-rose-200' 
+              : isQualiLocked 
+                ? 'bg-white/10 border-white/20' 
+                : 'bg-white/10 border-white/20'
           }`}>
-            {isLocked ? <Lock className="w-7 h-7 text-rose-500" /> : <Zap className="w-7 h-7 text-white" />}
+            {isRaceLocked ? <Lock className="w-7 h-7 text-rose-500" /> : <Zap className="w-7 h-7 text-white" />}
           </div>
           <div>
             <div className={`text-[9px] font-black uppercase tracking-[0.3em] mb-1 ${
-              isLocked ? 'text-rose-400' : 'text-white/60'
+              isRaceLocked 
+                ? 'text-rose-400' 
+                : isQualiLocked 
+                  ? 'text-amber-200' 
+                  : 'text-white/60'
             }`}>
-              {isLocked ? "Paris Clos" : "Clôture des paris"}
+              {isRaceLocked 
+                ? "Paris Clos" 
+                : isQualiLocked 
+                  ? "Clôture Pronos Course" 
+                  : "Clôture Pronos Qualifs"}
             </div>
             <div className={`text-2xl font-black tracking-tight tabular-nums ${
-              isLocked ? 'text-rose-600' : 'text-white'
+              isRaceLocked 
+                ? 'text-rose-600' 
+                : 'text-white'
             }`}>
-              {isLocked ? "Qualifs terminées" : countdown}
+              {isRaceLocked ? "Course commencée" : countdown}
             </div>
           </div>
         </div>
@@ -220,11 +245,17 @@ export default function Pronostics() {
             </button>
           )}
           <div className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border ${
-            isLocked 
+            isRaceLocked 
               ? 'bg-rose-100 text-rose-600 border-rose-200' 
-              : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+              : isQualiLocked 
+                ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                : 'bg-emerald-50 text-emerald-600 border-emerald-100'
           }`}>
-            {isLocked ? "Fermé" : "Ouvert"}
+            {isRaceLocked 
+              ? "Fermé" 
+              : isQualiLocked 
+                ? "Course Seule" 
+                : "Ouvert"}
           </div>
         </div>
       </div>
@@ -254,9 +285,9 @@ export default function Pronostics() {
         )}
       </AnimatePresence>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 items-start transition-opacity ${isLocked ? 'opacity-70' : 'opacity-100'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         {/* QUALIFICATIONS */}
-        <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isQualiLocked ? 'opacity-70' : 'opacity-100'}`}>
           <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
             <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Qualifs</h2>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
@@ -270,9 +301,9 @@ export default function Pronostics() {
                 <div className="flex-1 relative">
                   <select 
                     value={qualiSelections[index]}
-                    disabled={isLocked}
+                    disabled={isQualiLocked}
                     onChange={(e) => handleQualiChange(index, e.target.value)}
-                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
+                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isQualiLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
                   >
                     <option value="">Pilote...</option>
                     {teams2026.map((team) => (
@@ -285,7 +316,7 @@ export default function Pronostics() {
                       </optgroup>
                     ))}
                   </select>
-                  {qualiSelections[index] && !isLocked && (
+                  {qualiSelections[index] && !isQualiLocked && (
                     <button 
                       onClick={() => handleQualiChange(index, "")}
                       className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
@@ -300,7 +331,7 @@ export default function Pronostics() {
         </section>
 
         {/* COURSE */}
-        <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isRaceLocked ? 'opacity-70' : 'opacity-100'}`}>
           <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
             <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Course</h2>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
@@ -314,9 +345,9 @@ export default function Pronostics() {
                 <div className="flex-1 relative">
                   <select 
                     value={raceSelections[index]}
-                    disabled={isLocked}
+                    disabled={isRaceLocked}
                     onChange={(e) => handleRaceChange(index, e.target.value)}
-                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
+                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isRaceLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
                   >
                     <option value="">Pilote...</option>
                     {teams2026.map((team) => (
@@ -329,7 +360,7 @@ export default function Pronostics() {
                       </optgroup>
                     ))}
                   </select>
-                  {raceSelections[index] && !isLocked && (
+                  {raceSelections[index] && !isRaceLocked && (
                     <button 
                       onClick={() => handleRaceChange(index, "")}
                       className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
@@ -345,23 +376,23 @@ export default function Pronostics() {
       </div>
 
       {/* SPECIAL BET */}
-      <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isLocked ? 'opacity-70' : 'opacity-100'}`}>
+      <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isRaceLocked ? 'opacity-70' : 'opacity-100'}`}>
         <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4">
           <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Pari Spécial</h2>
         </div>
         <div className="p-8 space-y-4">
           <textarea 
             value={specialBet}
-            disabled={isLocked}
+            disabled={isRaceLocked}
             onChange={(e) => setSpecialBet(e.target.value)}
-            className={`w-full bg-slate-50 border border-slate-100 rounded-2xl p-6 min-h-[140px] text-xs font-bold text-slate-600 outline-none resize-none transition-all placeholder:text-slate-300 ${isLocked ? 'cursor-not-allowed' : 'focus:bg-white focus:border-slate-300'}`}
+            className={`w-full bg-slate-50 border border-slate-100 rounded-2xl p-6 min-h-[140px] text-xs font-bold text-slate-600 outline-none resize-none transition-all placeholder:text-slate-300 ${isRaceLocked ? 'cursor-not-allowed' : 'focus:bg-white focus:border-slate-300'}`}
             placeholder="Intuition, abandon, pluie..."
           />
         </div>
       </section>
 
       {/* FOOTER */}
-      {!isLocked && (
+      {!isRaceLocked && (
         <footer className="flex flex-col sm:flex-row items-center justify-between gap-8 pt-8 border-t border-slate-100">
           <div className="flex items-center gap-4">
             {showSuccess && (
@@ -382,7 +413,7 @@ export default function Pronostics() {
         </footer>
       )}
 
-      {isLocked && (
+      {isRaceLocked && (
         <div className="pt-8 border-t border-slate-100 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-rose-400">
             Ce Grand Prix est déjà en cours ou terminé. Les pronostics ne peuvent plus être modifiés.
