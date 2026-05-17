@@ -6,6 +6,7 @@ import { getNextRaceFromList, formatCountdown } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
+import CalendarManager from "@/components/CalendarManager";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -131,7 +132,7 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 flex items-center gap-3">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Saison en cours</span>
@@ -139,6 +140,7 @@ export default function Dashboard() {
           <div className="bg-[#2b62e3] px-4 py-2 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200">
             {calendar.length} Grands Prix
           </div>
+          <CalendarManager onSaved={loadAllData} />
         </div>
       </header>
 

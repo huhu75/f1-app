@@ -7,12 +7,17 @@ export function useCalendar() {
   const [calendar, setCalendar] = useState<Race[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const refresh = () => {
+    setIsLoading(true);
     fetchCalendar().then((races) => {
       setCalendar(races);
       setIsLoading(false);
     });
+  };
+
+  useEffect(() => {
+    refresh();
   }, []);
 
-  return { calendar, isLoading };
+  return { calendar, isLoading, refresh };
 }

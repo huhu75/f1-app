@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { Save, AlertCircle, Check, Loader2, Trophy, Zap, Flag, MessageSquare, History, ChevronRight, Calendar, Lock } from "lucide-react";
 import { teams2026, getNextRace, formatCountdown, getNextRaceFromList } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
+import CalendarManager from "@/components/CalendarManager";
 import { storageService, PLAYERS } from "@/lib/storage";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Pronostics() {
   const positions = Array.from({ length: 10 }, (_, i) => i);
-  const { calendar, isLoading: calendarLoading } = useCalendar();
+  const { calendar, isLoading: calendarLoading, refresh: refreshCalendar } = useCalendar();
 
   const [qualiSelections, setQualiSelections] = useState<string[]>(Array(10).fill(""));
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
@@ -175,19 +176,22 @@ export default function Pronostics() {
             ))}
           </div>
           
-          <div className="relative">
-            <select 
-              value={selectedRound}
-              onChange={(e) => setSelectedRound(parseInt(e.target.value))}
-              className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none appearance-none focus:border-slate-400 transition-colors"
-            >
-              {calendar.map(r => (
-                <option key={r.round} value={r.round}>
-                  R{r.round} • {r.name}
-                </option>
-              ))}
-            </select>
-            <ChevronRight className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <select 
+                value={selectedRound}
+                onChange={(e) => setSelectedRound(parseInt(e.target.value))}
+                className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none appearance-none focus:border-slate-400 transition-colors"
+              >
+                {calendar.map(r => (
+                  <option key={r.round} value={r.round}>
+                    R{r.round} • {r.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronRight className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+            </div>
+            <CalendarManager onSaved={refreshCalendar} />
           </div>
         </div>
       </header>
