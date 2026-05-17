@@ -89,5 +89,4 @@ export function formatCountdown(targetDate: Date): string {
   return `${days} jours, ${hours.toString().padStart(2, "0")}h ${minutes.toString().padStart(2, "0")}m`;
 }
 
-// Conservé pour les imports existants dans storage.ts – sera retiré une fois la migration complète.
-export const calendar2026: Race[] = [];
+

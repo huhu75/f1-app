@@ -51,29 +51,31 @@ export default function Dashboard() {
     setStandings(leaderboard);
     setInsights(stats);
     setSeasonProgress(progress);
-    
-    // Set default viewer round to NEXT race (matching Pronostics)
-    const nextR = getNextRaceFromList(calendar);
-    if (nextR) {
-      setNextRace(nextR);
-      setViewerRound(nextR.round);
-      setViewerPredictions(allPreds[nextR.round] || {});
-      setViewerResult(allResults[nextR.round] || null);
-      setCountdown(formatCountdown(nextR.qualiDate));
-      setUserPredictions(allPreds[nextR.round]?.["Hugo"] || null);
-    }
-    
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadAllData();
+  }, []);
+
+  useEffect(() => {
+    if (calendar.length > 0) {
+      const nextR = getNextRaceFromList(calendar);
+      if (nextR) {
+        setNextRace(nextR);
+        setViewerRound(nextR.round);
+        setCountdown(formatCountdown(nextR.qualiDate));
+      }
+    }
+  }, [calendar]);
+
+  useEffect(() => {
+    if (!nextRace) return;
     const interval = setInterval(() => {
-      const race = getNextRaceFromList(calendar);
-      if (race) setCountdown(formatCountdown(race.qualiDate));
+      setCountdown(formatCountdown(nextRace.qualiDate));
     }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [nextRace]);
 
   useEffect(() => {
     const updateViewer = async () => {
