@@ -1,4 +1,4 @@
-import { calendar2026 } from "./f1-data";
+import { fetchCalendar } from "./f1-data";
 import { supabase } from "./supabase";
 
 /**
@@ -258,9 +258,12 @@ export const storageService = {
     rounds: number[];
     players: { name: string; scores: number[]; cumulative: number[] }[];
   }> {
-    const allPredictions = await this.getAllPredictions();
-    const allResults = await this.getRaceResults();
-    const rounds = calendar2026.map(r => r.round);
+    const [allPredictions, allResults, calendar] = await Promise.all([
+      this.getAllPredictions(),
+      this.getRaceResults(),
+      fetchCalendar(),
+    ]);
+    const rounds = calendar.map(r => r.round);
     
     const results = PLAYERS.map(name => {
       let cumulative = 0;

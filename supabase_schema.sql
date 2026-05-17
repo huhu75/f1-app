@@ -22,9 +22,20 @@ create table if not exists race_results (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Table du calendrier des courses
+create table if not exists races (
+  round integer primary key,
+  name text not null,
+  date_string text not null,
+  race_start timestamptz not null,
+  quali_start timestamptz not null
+);
+
 -- Activer Row Level Security (RLS) en mode public pour simplifier l'accès entre amis
 alter table predictions enable row level security;
 alter table race_results enable row level security;
+alter table races enable row level security;
 
 create policy "Public access for predictions" on predictions for all using (true) with check (true);
 create policy "Public access for results" on race_results for all using (true) with check (true);
+create policy "Public access for races" on races for all using (true) with check (true);

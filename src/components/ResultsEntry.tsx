@@ -2,18 +2,27 @@
 
 import { useState, useEffect } from "react";
 import { Save, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
-import { calendar2026, teams2026 } from "@/lib/f1-data";
+import { teams2026 } from "@/lib/f1-data";
+import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, Prediction } from "@/lib/storage";
 
 export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
+  const { calendar } = useCalendar();
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedRound, setSelectedRound] = useState(calendar2026[0].round);
+  const [selectedRound, setSelectedRound] = useState<number>(0);
   const [qualiResults, setQualiResults] = useState<string[]>(Array(10).fill(""));
   const [raceResults, setRaceResults] = useState<string[]>(Array(10).fill(""));
   const [playersPredictions, setPlayersPredictions] = useState<Record<string, Prediction>>({});
   const [pendingBets, setPendingBets] = useState<Record<string, boolean | undefined>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Dès que le calendrier est chargé, initialiser le round sélectionné
+  useEffect(() => {
+    if (calendar.length > 0 && selectedRound === 0) {
+      setSelectedRound(calendar[0].round);
+    }
+  }, [calendar, selectedRound]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -108,7 +117,7 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
               onChange={(e) => setSelectedRound(parseInt(e.target.value))}
               className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all"
             >
-              {calendar2026.map(r => (
+              {calendar.map(r => (
                 <option key={r.round} value={r.round}>R{r.round} • {r.name}</option>
               ))}
             </select>

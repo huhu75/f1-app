@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer } from "lucide-react";
-import { getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
+import { getNextRaceFromList, formatCountdown } from "@/lib/f1-data";
+import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
@@ -17,6 +18,7 @@ interface DetailedStanding {
 }
 
 export default function Dashboard() {
+  const { calendar } = useCalendar();
   const [standings, setStandings] = useState<DetailedStanding[]>([]);
   const [nextRace, setNextRace] = useState<any>(null);
   const [countdown, setCountdown] = useState<string>("");
@@ -51,15 +53,15 @@ export default function Dashboard() {
     setSeasonProgress(progress);
     
     // Set default viewer round to NEXT race (matching Pronostics)
-    const nextR = getNextRace();
-    setNextRace(nextR);
-    setViewerRound(nextR.round);
-    
-    setViewerPredictions(allPreds[nextR.round] || {});
-    setViewerResult(allResults[nextR.round] || null);
-
-    setCountdown(formatCountdown(nextR.startDate));
-    setUserPredictions(allPreds[nextR.round]?.["Hugo"] || null);
+    const nextR = getNextRaceFromList(calendar);
+    if (nextR) {
+      setNextRace(nextR);
+      setViewerRound(nextR.round);
+      setViewerPredictions(allPreds[nextR.round] || {});
+      setViewerResult(allResults[nextR.round] || null);
+      setCountdown(formatCountdown(nextR.qualiDate));
+      setUserPredictions(allPreds[nextR.round]?.["Hugo"] || null);
+    }
     
     setIsLoading(false);
   };
@@ -67,8 +69,8 @@ export default function Dashboard() {
   useEffect(() => {
     loadAllData();
     const interval = setInterval(() => {
-      const race = getNextRace();
-      setCountdown(formatCountdown(race.startDate));
+      const race = getNextRaceFromList(calendar);
+      if (race) setCountdown(formatCountdown(race.qualiDate));
     }, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -133,7 +135,7 @@ export default function Dashboard() {
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Saison en cours</span>
           </div>
           <div className="bg-[#2b62e3] px-4 py-2 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200">
-            {calendar2026.length} Grands Prix
+            {calendar.length} Grands Prix
           </div>
         </div>
       </header>
@@ -249,7 +251,7 @@ export default function Dashboard() {
               <tr className="bg-white">
                 <th className="sticky left-0 z-30 p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 min-w-[120px] bg-white">Joueur</th>
                 {seasonProgress?.rounds.map(r => {
-                  const name = calendar2026.find(c => c.round === r)?.name;
+                  const name = calendar.find(c => c.round === r)?.name;
                   return (
                     <th key={`head-${r}`} className="relative h-24 min-w-[45px] p-0 border-b border-slate-50 bg-white">
                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center">
@@ -329,7 +331,7 @@ export default function Dashboard() {
             </button>
             <div className="text-center min-w-[140px]">
               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Historique</div>
-              <div className="text-xs font-black text-slate-900 uppercase">{calendar2026.find(r => r.round === viewerRound)?.name}</div>
+              <div className="text-xs font-black text-slate-900 uppercase">{calendar.find(r => r.round === viewerRound)?.name}</div>
             </div>
             <button 
               onClick={() => setViewerRound(r => Math.min(22, r + 1))}

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Save, AlertCircle, Check, Loader2, Trophy, Zap, Flag, MessageSquare, History, ChevronRight, Calendar, Lock } from "lucide-react";
-import { teams2026, getNextRace, formatCountdown, calendar2026 } from "@/lib/f1-data";
+import { teams2026, getNextRace, formatCountdown, getNextRaceFromList } from "@/lib/f1-data";
+import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, PLAYERS } from "@/lib/storage";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Pronostics() {
   const positions = Array.from({ length: 10 }, (_, i) => i);
+  const { calendar } = useCalendar();
 
   const [qualiSelections, setQualiSelections] = useState<string[]>(Array(10).fill(""));
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
@@ -23,18 +25,26 @@ export default function Pronostics() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Derived state for the selected race
-  const selectedRace = calendar2026.find(r => r.round === selectedRound) || calendar2026[0];
-  const isLocked = new Date() > selectedRace.startDate;
+  const selectedRace = calendar.find(r => r.round === selectedRound) || calendar[0];
+  // On verrouille dès le début des qualifications (qualiDate), pas de la course
+  const isLocked = selectedRace ? new Date() > selectedRace.qualiDate : false;
 
+  // Pré-sélectionner le prochain GP une fois le calendrier chargé
   useEffect(() => {
-    const nextR = getNextRace();
-    setSelectedRound(nextR.round);
-  }, []);
+    if (calendar.length > 0) {
+      const nextR = getNextRaceFromList(calendar) ?? calendar[0];
+      setSelectedRound(nextR.round);
+    } else {
+      const nextR = getNextRace();
+      setSelectedRound(nextR.round);
+    }
+  }, [calendar]);
 
-  // Update countdown dynamically based on selection
+  // Update countdown dynamically based on selection (compte à rebours jusqu'aux qualifs)
   useEffect(() => {
+    if (!selectedRace) return;
     const updateCountdown = () => {
-      setCountdown(formatCountdown(selectedRace.startDate));
+      setCountdown(formatCountdown(selectedRace.qualiDate));
     };
 
     updateCountdown();
@@ -159,7 +169,7 @@ export default function Pronostics() {
               onChange={(e) => setSelectedRound(parseInt(e.target.value))}
               className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none appearance-none focus:border-slate-400 transition-colors"
             >
-              {calendar2026.map(r => (
+              {calendar.map(r => (
                 <option key={r.round} value={r.round}>
                   R{r.round} • {r.name}
                 </option>
