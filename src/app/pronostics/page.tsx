@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Pronostics() {
   const positions = Array.from({ length: 10 }, (_, i) => i);
-  const { calendar } = useCalendar();
+  const { calendar, isLoading: calendarLoading } = useCalendar();
 
   const [qualiSelections, setQualiSelections] = useState<string[]>(Array(10).fill(""));
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
@@ -25,7 +25,7 @@ export default function Pronostics() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Derived state for the selected race
-  const selectedRace = calendar.find(r => r.round === selectedRound) || calendar[0];
+  const selectedRace = calendar.find(r => r.round === selectedRound) ?? calendar[0] ?? null;
   // On verrouille dès le début des qualifications (qualiDate), pas de la course
   const isLocked = selectedRace ? new Date() > selectedRace.qualiDate : false;
 
@@ -43,10 +43,7 @@ export default function Pronostics() {
   // Update countdown dynamically based on selection (compte à rebours jusqu'aux qualifs)
   useEffect(() => {
     if (!selectedRace) return;
-    const updateCountdown = () => {
-      setCountdown(formatCountdown(selectedRace.qualiDate));
-    };
-
+    const updateCountdown = () => setCountdown(formatCountdown(selectedRace.qualiDate));
     updateCountdown();
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
@@ -123,6 +120,12 @@ export default function Pronostics() {
     };
     return colors[name] || "#2b62e3";
   };
+
+  if (calendarLoading || !selectedRace) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="w-8 h-8 text-slate-200 animate-spin" />
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-10 pb-24 text-slate-900 bg-white min-h-screen">
