@@ -313,6 +313,14 @@ export const storageService = {
     const driverFrequency: Record<string, number> = {};
     const scoresByRound: { round: number; points: number }[] = [];
 
+    // New metrics variables
+    let accumulatedDistance = 0;
+    let correctDriversCount = 0;
+    let totalCorrectDriversDistance = 0;
+    let totalDriversPredicted = 0;
+    let top10PresenceCount = 0;
+    let gpsWithResults = 0;
+
     Object.entries(allPredictions).forEach(([roundStr, playersPreds]) => {
       const round = parseInt(roundStr);
       const pred = playersPreds[playerName];
@@ -322,23 +330,62 @@ export const storageService = {
         roundsParticipated++;
         let roundScore = 0;
         
+        const hasResult = !!result;
+        if (hasResult) {
+          gpsWithResults++;
+        }
+
         pred.qualiPositions.forEach((driver, idx) => {
           if (driver) {
             driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
-            if (result?.qualiPositions && driver === result.qualiPositions[idx]) {
-              roundScore += 1;
-              totalQualiCorrect++;
+            
+            if (hasResult) {
+              totalDriversPredicted++;
+              if (driver === result.qualiPositions[idx]) {
+                roundScore += 1;
+                totalQualiCorrect++;
+              }
+              
+              const actualIdx = result.qualiPositions.indexOf(driver);
+              if (actualIdx !== -1) {
+                top10PresenceCount++;
+                const dist = Math.abs(idx - actualIdx);
+                accumulatedDistance += dist;
+                totalCorrectDriversDistance += dist;
+                correctDriversCount++;
+              } else {
+                accumulatedDistance += 10; // penalty for missing top 10
+              }
             }
+          } else if (hasResult) {
+            accumulatedDistance += 10; // penalty for empty prediction
           }
         });
 
         pred.racePositions.forEach((driver, idx) => {
           if (driver) {
             driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
-            if (result?.racePositions && driver === result.racePositions[idx]) {
-              roundScore += 1;
-              totalRaceCorrect++;
+            
+            if (hasResult) {
+              totalDriversPredicted++;
+              if (driver === result.racePositions[idx]) {
+                roundScore += 1;
+                totalRaceCorrect++;
+              }
+              
+              const actualIdx = result.racePositions.indexOf(driver);
+              if (actualIdx !== -1) {
+                top10PresenceCount++;
+                const dist = Math.abs(idx - actualIdx);
+                accumulatedDistance += dist;
+                totalCorrectDriversDistance += dist;
+                correctDriversCount++;
+              } else {
+                accumulatedDistance += 10; // penalty for missing top 10
+              }
             }
+          } else if (hasResult) {
+            accumulatedDistance += 10; // penalty for empty prediction
           }
         });
 
@@ -360,6 +407,18 @@ export const storageService = {
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
 
+    const proximityScore = gpsWithResults 
+      ? 100 * (1 - accumulatedDistance / (gpsWithResults * 200))
+      : 0;
+
+    const avgDistance = correctDriversCount 
+      ? totalCorrectDriversDistance / correctDriversCount
+      : 0;
+
+    const top10PresenceRate = totalDriversPredicted 
+      ? (top10PresenceCount / totalDriversPredicted) * 100
+      : 0;
+
     return {
       playerName,
       totalPoints,
@@ -368,7 +427,10 @@ export const storageService = {
       raceAccuracy: roundsParticipated ? (totalRaceCorrect / (roundsParticipated * 10)) * 100 : 0,
       betWinRate: betsTotal ? (betsWon / betsTotal) * 100 : 0,
       favoriteDrivers,
-      lastScores: scoresByRound.sort((a, b) => b.round - a.round).slice(0, 5).reverse()
+      lastScores: scoresByRound.sort((a, b) => b.round - a.round).slice(0, 5).reverse(),
+      proximityScore,
+      avgDistance,
+      top10PresenceRate
     };
   }
 };

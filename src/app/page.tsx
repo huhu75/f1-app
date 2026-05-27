@@ -576,6 +576,7 @@ export default function Dashboard() {
               
               {playerStats ? (
                 <div className="space-y-6">
+                  {/* Overview points */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                       <div className="text-2xl font-black text-slate-900 tabular-nums">{playerStats.totalPoints}</div>
@@ -587,23 +588,48 @@ export default function Dashboard() {
                     </div>
                   </div>
                   
-                  <div className="bg-slate-900 p-6 rounded-2xl text-white">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-[9px] font-black uppercase text-slate-500">Précision Qualifs</span>
-                      <span className="text-lg font-black text-amber-400">{playerStats.qualiAccuracy.toFixed(0)}%</span>
+                  {/* Proximity / Expertise Score Card */}
+                  <div className="bg-slate-900 p-6 rounded-2xl text-white space-y-4 shadow-lg shadow-indigo-950/20">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Indice de Proximité (Expertise)</span>
+                      <span className="text-xl font-black text-indigo-400">{playerStats.proximityScore.toFixed(0)}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${playerStats.qualiAccuracy}%` }} />
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000" 
+                        style={{ width: `${playerStats.proximityScore}%` }} 
+                      />
                     </div>
+                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                      💡 Vous êtes <span className="text-indigo-400 font-bold">{(playerStats.proximityScore - 40).toFixed(0)}%</span> plus précis que le hasard pur (~40%).
+                    </p>
                   </div>
 
-                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-[9px] font-black uppercase text-slate-400">Précision Course</span>
-                      <span className="text-lg font-black text-slate-900">{playerStats.raceAccuracy.toFixed(0)}%</span>
+                  {/* Secondary detailed metrics */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Écart Moyen / Pilote</div>
+                      <div className="text-lg font-black text-slate-900 tabular-nums">
+                        {playerStats.avgDistance.toFixed(1)} <span className="text-[9px] font-normal text-slate-400">places</span>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-slate-900 h-full transition-all duration-1000" style={{ width: `${playerStats.raceAccuracy}%` }} />
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Présence au Top 10</div>
+                      <div className="text-lg font-black text-slate-900 tabular-nums">
+                        {playerStats.top10PresenceRate.toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Qualifs (Rangs exacts)</div>
+                      <div className="text-lg font-black text-slate-900 tabular-nums">
+                        {playerStats.qualiAccuracy.toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Course (Rangs exacts)</div>
+                      <div className="text-lg font-black text-slate-900 tabular-nums">
+                        {playerStats.raceAccuracy.toFixed(0)}%
+                      </div>
                     </div>
                   </div>
                 </div>
