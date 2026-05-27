@@ -18,6 +18,41 @@ interface DetailedStanding {
   betPoints: number;
 }
 
+// Custom Tooltip component for the points distribution chart
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const total = payload.reduce((acc: number, entry: any) => acc + (entry.value || 0), 0);
+    return (
+      <div className="backdrop-blur-md bg-white/95 border border-slate-200/50 p-4 rounded-2xl shadow-xl min-w-[200px] transition-all duration-200">
+        <p className="text-xs font-black uppercase tracking-wider text-slate-800 mb-2.5 border-b border-slate-100 pb-1.5">{label}</p>
+        <div className="space-y-2">
+          {payload.map((entry: any) => {
+            let gradColor = "";
+            if (entry.dataKey === "qualiPoints") gradColor = "bg-gradient-to-r from-indigo-500 to-purple-500";
+            else if (entry.dataKey === "racePoints") gradColor = "bg-gradient-to-r from-blue-500 to-cyan-500";
+            else if (entry.dataKey === "betPoints") gradColor = "bg-gradient-to-r from-amber-500 to-yellow-500";
+            
+            return (
+              <div key={entry.name} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${gradColor}`} />
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-tight">{entry.name}</span>
+                </div>
+                <span className="text-xs font-black tabular-nums text-slate-800">{entry.value} pts</span>
+              </div>
+            );
+          })}
+          <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center text-xs font-black text-slate-800">
+            <span className="text-slate-400">TOTAL</span>
+            <span className="text-sm text-[#2b62e3] tabular-nums">{total} pts</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const { calendar } = useCalendar();
   const [standings, setStandings] = useState<DetailedStanding[]>([]);
@@ -112,6 +147,7 @@ export default function Dashboard() {
   // Winners by session
   const qualiChamp = [...standings].sort((a, b) => b.qualiPoints - a.qualiPoints)[0];
   const raceChamp = [...standings].sort((a, b) => b.racePoints - a.racePoints)[0];
+  const betChamp = [...standings].sort((a, b) => b.betPoints - a.betPoints)[0];
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -207,11 +243,11 @@ export default function Dashboard() {
       </div>
 
       {/* SESSION KINGS SECTION */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-              <Timer className="w-6 h-6 text-amber-500" />
+              <Timer className="w-6 h-6 text-indigo-500" />
             </div>
             <div>
               <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">L'Expert des Qualifs</h4>
@@ -227,7 +263,7 @@ export default function Dashboard() {
         <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-              <Flag className="w-6 h-6 text-emerald-500" />
+              <Flag className="w-6 h-6 text-blue-500" />
             </div>
             <div>
               <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Le Maître de la Course</h4>
@@ -236,6 +272,22 @@ export default function Dashboard() {
           </div>
           <div className="text-right">
             <span className="text-2xl font-black text-[#2b62e3] tabular-nums">{raceChamp?.racePoints || 0}</span>
+            <p className="text-[8px] font-black uppercase text-slate-300">points</p>
+          </div>
+        </div>
+
+        <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+              <Zap className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Le Roi des Paris</h4>
+              <p className="text-xl font-black text-slate-900 uppercase">{betChamp?.name || "—"}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black text-[#2b62e3] tabular-nums">{betChamp?.betPoints || 0}</span>
             <p className="text-[8px] font-black uppercase text-slate-300">points</p>
           </div>
         </div>
@@ -294,30 +346,60 @@ export default function Dashboard() {
       </section>
 
       {/* SESSION COMPARISON BAR CHART */}
-      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
-        <div className="mb-10">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
-          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
+      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm relative overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 relative z-10">
+          <div>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
+            <p className="text-xl font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
+          </div>
+          
+          {/* Custom HTML Legend */}
+          <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
+              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm shadow-indigo-200" />
+              <span>Qualifs</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
+              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm shadow-blue-200" />
+              <span>Course</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
+              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 shadow-sm shadow-amber-200" />
+              <span>Paris</span>
+            </div>
+          </div>
         </div>
-        <div className="h-[350px] w-full">
+
+        <div className="h-[350px] w-full relative z-10">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 900 }} />
+              <defs>
+                <linearGradient id="qualiGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+                <linearGradient id="raceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+                <linearGradient id="betGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#eab308" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} />
               <Tooltip 
-                cursor={{fill: '#f8fafc'}}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 12 }}
+                content={<CustomTooltip />}
               />
-              <Legend 
-                verticalAlign="top" 
-                align="right" 
-                iconType="circle"
-                wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-              />
-              <Bar dataKey="qualiPoints" name="Qualifs" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="racePoints" name="Course" fill="#2b62e3" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="betPoints" name="Paris" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="qualiPoints" name="Qualifs" fill="url(#qualiGrad)" radius={[6, 6, 0, 0]} barSize={20} />
+              <Bar dataKey="racePoints" name="Course" fill="url(#raceGrad)" radius={[6, 6, 0, 0]} barSize={20} />
+              <Bar dataKey="betPoints" name="Paris" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
