@@ -250,7 +250,9 @@ export default function Dashboard() {
               <Timer className="w-6 h-6 text-indigo-500" />
             </div>
             <div>
-              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">L'Expert des Qualifs</h4>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                {qualiChamp?.name === "Carole" ? "L'Experte des Qualifs" : "L'Expert des Qualifs"}
+              </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{qualiChamp?.name || "—"}</p>
             </div>
           </div>
@@ -266,7 +268,9 @@ export default function Dashboard() {
               <Flag className="w-6 h-6 text-blue-500" />
             </div>
             <div>
-              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Le Maître de la Course</h4>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                {raceChamp?.name === "Carole" ? "La Maîtresse de la Course" : "Le Maître de la Course"}
+              </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{raceChamp?.name || "—"}</p>
             </div>
           </div>
@@ -282,7 +286,9 @@ export default function Dashboard() {
               <Zap className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Le Roi des Paris</h4>
+              <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                {betChamp?.name === "Carole" ? "La Reine des Paris" : "Le Roi des Paris"}
+              </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{betChamp?.name || "—"}</p>
             </div>
           </div>
@@ -591,8 +597,13 @@ export default function Dashboard() {
                   {/* Proximity / Expertise Score Card */}
                   <div className="bg-slate-900 p-6 rounded-2xl text-white space-y-4 shadow-lg shadow-indigo-950/20">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Indice de Proximité (Expertise)</span>
-                      <span className="text-xl font-black text-indigo-400">{playerStats.proximityScore.toFixed(0)}%</span>
+                      <div>
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Précision du placement</span>
+                        <h4 className="text-xs font-black text-indigo-400 mt-0.5">
+                          Rang : {playerStats.proximityScore >= 70 ? "Stratège Légendaire 🏎️" : playerStats.proximityScore >= 55 ? "Pilote Pro 🏁" : playerStats.proximityScore >= 40 ? "Pilote du Dimanche 🚗" : "Sortie de Piste 💥"}
+                        </h4>
+                      </div>
+                      <span className="text-3xl font-black text-indigo-400 tabular-nums">{playerStats.proximityScore.toFixed(0)}%</span>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                       <div 
@@ -601,34 +612,57 @@ export default function Dashboard() {
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                      💡 Vous êtes <span className="text-indigo-400 font-bold">{(playerStats.proximityScore - 40).toFixed(0)}%</span> plus précis que le hasard pur (~40%).
+                      Mesure la proximité globale de vos pronostics avec les positions réelles (100% = parfait, 0% = écart maximum).
                     </p>
                   </div>
-
+                  
                   {/* Secondary detailed metrics */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Écart Moyen / Pilote</div>
-                      <div className="text-lg font-black text-slate-900 tabular-nums">
-                        {playerStats.avgDistance.toFixed(1)} <span className="text-[9px] font-normal text-slate-400">places</span>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
+                      <div>
+                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Marge d'Erreur (Écart)</div>
+                        <div className="text-lg font-black text-slate-900 tabular-nums">
+                          {playerStats.avgDistance.toFixed(1)} <span className="text-[9px] font-normal text-slate-400">places</span>
+                        </div>
+                      </div>
+                      <div className="text-[8px] font-bold text-slate-500 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
+                        {playerStats.avgDistance === 0 ? "Parfait 🏎️" : playerStats.avgDistance < 1.5 ? "Chirurgical 🎯" : playerStats.avgDistance <= 3.0 ? "Honorable ⚖️" : "Dans le décor 🌲"} <span className="text-[7px] text-slate-400 font-normal">(Plus bas = mieux)</span>
                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Présence au Top 10</div>
-                      <div className="text-lg font-black text-slate-900 tabular-nums">
-                        {playerStats.top10PresenceRate.toFixed(0)}%
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
+                      <div>
+                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Présence au Top 10</div>
+                        <div className="text-lg font-black text-slate-900 tabular-nums">
+                          {playerStats.top10PresenceRate.toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
+                        Pilotes devinés dans le Top 10, quel que soit l'ordre.
                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Qualifs (Rangs exacts)</div>
-                      <div className="text-lg font-black text-slate-900 tabular-nums">
-                        {playerStats.qualiAccuracy.toFixed(0)}%
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
+                      <div>
+                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Rangs Exacts (Qualifs)</div>
+                        <div className="text-lg font-black text-slate-900 tabular-nums">
+                          {playerStats.qualiAccuracy.toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
+                        Pilotes placés exactement au bon rang en qualifications.
                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Course (Rangs exacts)</div>
-                      <div className="text-lg font-black text-slate-900 tabular-nums">
-                        {playerStats.raceAccuracy.toFixed(0)}%
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
+                      <div>
+                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Rangs Exacts (Course)</div>
+                        <div className="text-lg font-black text-slate-900 tabular-nums">
+                          {playerStats.raceAccuracy.toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
+                        Pilotes placés exactement au bon rang en course.
                       </div>
                     </div>
                   </div>
