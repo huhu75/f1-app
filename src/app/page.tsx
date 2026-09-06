@@ -4,19 +4,11 @@ import { useEffect, useState } from "react";
 import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer } from "lucide-react";
 import { getNextRaceFromList, formatCountdown } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
-import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS } from "@/lib/storage";
+import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS, DetailedStanding, PlayerDetailedStats, isFemale } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
 import CalendarManager from "@/components/CalendarManager";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
-
-interface DetailedStanding {
-  name: string;
-  points: number;
-  qualiPoints: number;
-  racePoints: number;
-  betPoints: number;
-}
 
 // Custom Tooltip component for the points distribution chart
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -182,64 +174,127 @@ export default function Dashboard() {
 
       {/* STATS OVERVIEW */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {standings.map((p, i) => (
-          <button 
-            key={p.name} 
-            onClick={() => setSelectedPlayerName(p.name)}
-            className="group text-left bg-white border border-slate-100 p-6 rounded-3xl relative shadow-sm hover:shadow-md hover:border-[#2b62e3]/30 transition-all overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1.5 transition-transform group-hover:scale-y-125" style={{ backgroundColor: getPlayerColor(p.name) }} />
-            
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-black text-slate-100 group-hover:text-slate-200 transition-colors">0{i + 1}</span>
-                <p className="text-base font-black text-slate-900 uppercase tracking-tight">{p.name}</p>
-              </div>
-              {i === 0 && <Trophy className="w-5 h-5 text-amber-400 fill-amber-400" />}
-            </div>
-
-            <div className="flex items-end justify-between mb-8">
+        {standings.map((p, i) => {
+          const female = isFemale(p.name);
+          const rankLabel = i === 0 ? (female ? "1ère" : "1er") : `${i + 1}e`;
+          
+          return (
+            <button 
+              key={p.name} 
+              onClick={() => setSelectedPlayerName(p.name)}
+              className="group text-left bg-white border border-slate-100 p-6 rounded-3xl relative shadow-sm hover:shadow-xl hover:border-[#2b62e3]/40 transition-all duration-300 overflow-hidden flex flex-col justify-between"
+            >
+              <div 
+                className="absolute top-0 left-0 right-0 h-1.5 transition-all group-hover:h-2" 
+                style={{ backgroundColor: getPlayerColor(p.name) }} 
+              />
+              
               <div>
-                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Points</h3>
-                <p className="text-5xl font-black text-slate-900 tabular-nums tracking-tighter">
-                  {p.points || 0}
-                </p>
-              </div>
-            </div>
+                {/* Header: Rank + Name + Flair Profile Badge */}
+                <div className="flex items-start justify-between gap-2 mb-5">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[11px] font-black text-slate-400 group-hover:text-slate-600 transition-colors uppercase">
+                        {rankLabel}
+                      </span>
+                      {i === 0 && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500 inline" />}
+                    </div>
+                    <p className="text-xl font-black text-slate-900 uppercase tracking-tight">{p.name}</p>
+                  </div>
+                  
+                  {p.profile && (
+                    <div className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 shadow-xs ${p.profile.badgeClass}`}>
+                      <span>{p.profile.icon}</span>
+                      <span>{p.profile.title}</span>
+                    </div>
+                  )}
+                </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-50">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center">
-                    <Timer className="w-3 h-3 text-slate-400" />
+                {/* Score Total & Écart moyen */}
+                <div className="mb-5 flex items-baseline justify-between">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Points Totaux</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-4xl font-black text-slate-900 tabular-nums tracking-tighter">
+                        {p.points || 0}
+                      </span>
+                      <span className="text-xs font-black text-slate-400 uppercase">pts</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Écart moyen</span>
+                    <span className="text-lg font-black text-indigo-600 tabular-nums">
+                      ±{p.avgDistance || 0} <span className="text-[10px] font-bold text-slate-400">pl.</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* INDICE DE PROXIMITÉ & FLAIR */}
+                <div className="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-100 mb-5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Target className="w-3 h-3 text-indigo-500" />
+                      Précision de placement
+                    </span>
+                    <span className="text-xs font-black text-indigo-600 tabular-nums">
+                      {p.proximityScore || 0}%
+                    </span>
+                  </div>
+                  
+                  {/* Gauge Bar */}
+                  <div className="w-full bg-slate-200/70 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-indigo-500 via-[#2b62e3] to-emerald-400 h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.max(5, p.proximityScore || 0)}%` }}
+                    />
+                  </div>
+
+                  {/* Highlights : Dans le mille vs À ±1 place */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="bg-white px-2.5 py-1.5 rounded-xl border border-slate-100 shadow-xs flex items-center gap-2">
+                      <span className="text-xs">🎯</span>
+                      <div>
+                        <div className="text-[8px] font-black uppercase text-slate-400 leading-none">Dans le mille</div>
+                        <div className="text-xs font-black text-slate-900 tabular-nums">{p.exactCount || 0} <span className="text-[8px] text-slate-400">exacts</span></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50/70 px-2.5 py-1.5 rounded-xl border border-amber-200/50 shadow-xs flex items-center gap-2">
+                      <span className="text-xs">🤏</span>
+                      <div>
+                        <div className="text-[8px] font-black uppercase text-amber-700 leading-none">À ±1 place</div>
+                        <div className="text-xs font-black text-amber-900 tabular-nums">{p.nearMissCount || 0} <span className="text-[8px] text-amber-600 font-bold">si proche</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Session breakdown */}
+                <div className="grid grid-cols-3 gap-2 py-2.5 border-t border-slate-100 text-center">
+                  <div>
+                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Qualifs</div>
+                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.qualiPoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
+                  </div>
+                  <div className="border-x border-slate-100">
+                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Course</div>
+                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.racePoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
                   </div>
                   <div>
-                    <div className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Qualifs</div>
-                    <div className="text-sm font-black text-slate-900 tabular-nums">{p.qualiPoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
+                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Paris</div>
+                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.betPoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center">
-                    <Flag className="w-3 h-3 text-slate-400" />
-                  </div>
-                  <div>
-                    <div className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Course</div>
-                    <div className="text-sm font-black text-slate-900 tabular-nums">{p.racePoints || 0} <span className="text-[8px] text-slate-300">pts</span></div>
-                  </div>
-                </div>
+              {/* Call to action footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100/70 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-[#2b62e3] group-hover:text-[#1d4ed8]">
+                <span>Analyse détaillée du flair</span>
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
-               <Zap className="w-3 h-3 text-amber-500" />
-               <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Paris gagnés :</span>
-               <span className="text-[10px] font-black text-slate-700">{p.betPoints / 2 || 0}</span>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* SESSION KINGS SECTION */}
@@ -251,7 +306,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                {qualiChamp?.name === "Carole" ? "L'Experte des Qualifs" : "L'Expert des Qualifs"}
+                {isFemale(qualiChamp?.name || "") ? "L'Experte des Qualifs" : "L'Expert des Qualifs"}
               </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{qualiChamp?.name || "—"}</p>
             </div>
@@ -269,7 +324,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                {raceChamp?.name === "Carole" ? "La Maîtresse de la Course" : "Le Maître de la Course"}
+                {isFemale(raceChamp?.name || "") ? "La Maîtresse de la Course" : "Le Maître de la Course"}
               </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{raceChamp?.name || "—"}</p>
             </div>
@@ -287,7 +342,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                {betChamp?.name === "Carole" ? "La Reine des Paris" : "Le Roi des Paris"}
+                {isFemale(betChamp?.name || "") ? "La Reine des Paris" : "Le Roi des Paris"}
               </h4>
               <p className="text-xl font-black text-slate-900 uppercase">{betChamp?.name || "—"}</p>
             </div>
@@ -570,104 +625,297 @@ export default function Dashboard() {
       <AnimatePresence>
         {selectedPlayerName && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPlayerName(null)} className="absolute inset-0 bg-slate-900/10 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden p-8 border border-slate-100">
-              <div className="flex justify-between items-start mb-8">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setSelectedPlayerName(null)} 
+              className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: 20, scale: 0.96 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 20, scale: 0.96 }} 
+              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 border border-slate-100"
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">{selectedPlayerName}</h3>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Analyse du Pilote</p>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">
+                      {selectedPlayerName}
+                    </h3>
+                    {playerStats?.profile && (
+                      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 shadow-xs ${playerStats.profile.badgeClass}`}>
+                        <span>{playerStats.profile.icon}</span>
+                        <span>{playerStats.profile.title}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {playerStats?.isFemale ? "Analyse de la pilote • Pronostics F1" : "Analyse du pilote • Pronostics F1"}
+                  </p>
+                  {playerStats?.profile?.description && (
+                    <p className="text-xs text-slate-500 italic mt-1.5 font-medium">
+                      « {playerStats.profile.description} »
+                    </p>
+                  )}
                 </div>
-                <button onClick={() => setSelectedPlayerName(null)} className="p-2 text-slate-300 hover:text-slate-900">×</button>
+                <button 
+                  onClick={() => setSelectedPlayerName(null)} 
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-800 flex items-center justify-center text-lg font-bold transition-colors"
+                >
+                  ×
+                </button>
               </div>
               
               {playerStats ? (
                 <div className="space-y-6">
-                  {/* Overview points */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  {/* Top 3 High-Level Metrics */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Points Totaux</div>
                       <div className="text-2xl font-black text-slate-900 tabular-nums">{playerStats.totalPoints}</div>
-                      <div className="text-[8px] font-black text-slate-400 uppercase">Points Totaux</div>
+                      <div className="text-[8px] font-bold text-slate-400 mt-0.5">Rang actuel</div>
                     </div>
-                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                      <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Moyenne / GP</div>
                       <div className="text-2xl font-black text-slate-900 tabular-nums">{playerStats.avgPointsPerGP.toFixed(1)}</div>
-                      <div className="text-[8px] font-black text-slate-400 uppercase">Moyenne / GP</div>
+                      <div className="text-[8px] font-bold text-slate-400 mt-0.5">pts par week-end</div>
+                    </div>
+                    <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 text-center">
+                      <div className="text-[8px] font-black text-indigo-500 uppercase mb-1">Écart Moyen</div>
+                      <div className="text-2xl font-black text-indigo-700 tabular-nums">±{playerStats.avgDistance}</div>
+                      <div className="text-[8px] font-bold text-indigo-500/80 mt-0.5">places de la vérité</div>
                     </div>
                   </div>
-                  
-                  {/* Proximity / Expertise Score Card */}
-                  <div className="bg-slate-900 p-6 rounded-2xl text-white space-y-4 shadow-lg shadow-indigo-950/20">
-                    <div className="flex justify-between items-center">
+
+                  {/* LE RADAR DE TIR : OU TOMBENT TES PRONOSTICS ? */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Précision du placement</span>
-                        <h4 className="text-xs font-black text-indigo-400 mt-0.5">
-                          Rang : {playerStats.proximityScore >= 70 ? "Stratège Légendaire 🏎️" : playerStats.proximityScore >= 55 ? "Pilote Pro 🏁" : playerStats.proximityScore >= 40 ? "Pilote du Dimanche 🚗" : "Sortie de Piste 💥"}
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <Target className="w-4 h-4 text-indigo-600" />
+                          Précision des tirs ({playerStats.totalPredicted} pilotes pronostiqués)
                         </h4>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                          Où atterrissent vos pilotes par rapport au résultat réel ?
+                        </p>
                       </div>
-                      <span className="text-3xl font-black text-indigo-400 tabular-nums">{playerStats.proximityScore.toFixed(0)}%</span>
+                      <span className="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100">
+                        {playerStats.proximityScore}% flair
+                      </span>
                     </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000" 
-                        style={{ width: `${playerStats.proximityScore}%` }} 
-                      />
+
+                    {/* Stacked bar of accuracy */}
+                    <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                      {playerStats.exactCount > 0 && (
+                        <div 
+                          style={{ width: `${(playerStats.exactCount / (playerStats.totalPredicted || 1)) * 100}%` }}
+                          className="bg-emerald-500 h-full transition-all duration-700" 
+                          title={`Dans le mille : ${playerStats.exactCount}`}
+                        />
+                      )}
+                      {playerStats.nearMissCount > 0 && (
+                        <div 
+                          style={{ width: `${(playerStats.nearMissCount / (playerStats.totalPredicted || 1)) * 100}%` }}
+                          className="bg-amber-400 h-full transition-all duration-700" 
+                          title={`À ±1 place : ${playerStats.nearMissCount}`}
+                        />
+                      )}
+                      {playerStats.top10OnlyCount > 0 && (
+                        <div 
+                          style={{ width: `${(playerStats.top10OnlyCount / (playerStats.totalPredicted || 1)) * 100}%` }}
+                          className="bg-[#2b62e3] h-full transition-all duration-700" 
+                          title={`Dans le Top 10 : ${playerStats.top10OnlyCount}`}
+                        />
+                      )}
+                      {playerStats.missCount > 0 && (
+                        <div 
+                          style={{ width: `${(playerStats.missCount / (playerStats.totalPredicted || 1)) * 100}%` }}
+                          className="bg-slate-300 h-full transition-all duration-700" 
+                          title={`Hors Top 10 : ${playerStats.missCount}`}
+                        />
+                      )}
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                      Mesure la proximité globale de vos pronostics avec les positions réelles (100% = parfait, 0% = écart maximum).
-                    </p>
+
+                    {/* 4 Cards under stacked bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-left">
+                        <div className="flex items-center gap-1 text-[9px] font-black uppercase text-emerald-700 mb-0.5">
+                          <span>🎯</span> Dans le mille
+                        </div>
+                        <div className="text-xl font-black text-emerald-900 tabular-nums">
+                          {playerStats.exactCount}
+                          <span className="text-[10px] font-normal text-emerald-600 ml-1">
+                            ({Math.round((playerStats.exactCount / (playerStats.totalPredicted || 1)) * 100)}%)
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-bold text-emerald-600/80 mt-1">
+                          Rang exact (+1 pt)
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-left">
+                        <div className="flex items-center gap-1 text-[9px] font-black uppercase text-amber-700 mb-0.5">
+                          <span>🤏</span> À ±1 place
+                        </div>
+                        <div className="text-xl font-black text-amber-900 tabular-nums">
+                          {playerStats.nearMissCount}
+                          <span className="text-[10px] font-normal text-amber-700 ml-1">
+                            ({Math.round((playerStats.nearMissCount / (playerStats.totalPredicted || 1)) * 100)}%)
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-black text-amber-600 mt-1">
+                          Frôlé ! (Si proche)
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-left">
+                        <div className="flex items-center gap-1 text-[9px] font-black uppercase text-blue-700 mb-0.5">
+                          <span>📍</span> Top 10
+                        </div>
+                        <div className="text-xl font-black text-blue-900 tabular-nums">
+                          {playerStats.top10OnlyCount}
+                          <span className="text-[10px] font-normal text-blue-600 ml-1">
+                            ({Math.round((playerStats.top10OnlyCount / (playerStats.totalPredicted || 1)) * 100)}%)
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-bold text-blue-600/80 mt-1">
+                          Vu, mais décalé
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-left">
+                        <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-500 mb-0.5">
+                          <span>❌</span> Hors-piste
+                        </div>
+                        <div className="text-xl font-black text-slate-800 tabular-nums">
+                          {playerStats.missCount}
+                          <span className="text-[10px] font-normal text-slate-500 ml-1">
+                            ({Math.round((playerStats.missCount / (playerStats.totalPredicted || 1)) * 100)}%)
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-bold text-slate-400 mt-1">
+                          Hors du Top 10
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Secondary detailed metrics */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
-                      <div>
-                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Marge d'Erreur (Écart)</div>
-                        <div className="text-lg font-black text-slate-900 tabular-nums">
-                          {playerStats.avgDistance.toFixed(1)} <span className="text-[9px] font-normal text-slate-400">places</span>
+
+                  {/* DUEL SAMEDI vs DIMANCHE */}
+                  <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                        <Gauge className="w-4 h-4 text-blue-600" />
+                        Duel des Sessions : Qualifs vs Course
+                      </h4>
+                      <span className="text-[9px] font-black uppercase text-slate-500">
+                        {playerStats.qualiStats.avgDistance < playerStats.raceStats.avgDistance
+                          ? (playerStats.isFemale ? "Plus affûtée le samedi ⏱️" : "Plus affûté le samedi ⏱️")
+                          : (playerStats.isFemale ? "Meilleur flair en course 🏁" : "Meilleur flair en course 🏁")
+                        }
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Qualifs */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black uppercase text-indigo-600 flex items-center gap-1">
+                            <Timer className="w-3 h-3" /> Qualifications
+                          </span>
+                          <span className="text-xs font-black text-slate-900">{playerStats.qualiPoints} pts</span>
+                        </div>
+                        <div className="flex items-baseline justify-between pt-1 border-t border-slate-50">
+                          <span className="text-[9px] font-medium text-slate-400">Écart moyen :</span>
+                          <span className="text-sm font-black text-indigo-600 tabular-nums">±{playerStats.qualiStats.avgDistance} pl.</span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-[9px]">
+                          <span className="font-medium text-slate-400">Rangs exacts :</span>
+                          <span className="font-bold text-slate-700">{playerStats.qualiStats.exactCount} ({playerStats.qualiStats.totalPredicted ? Math.round((playerStats.qualiStats.exactCount / playerStats.qualiStats.totalPredicted) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-[9px]">
+                          <span className="font-medium text-slate-400">À ±1 place :</span>
+                          <span className="font-bold text-amber-600">{playerStats.qualiStats.nearMissCount} si proche</span>
                         </div>
                       </div>
-                      <div className="text-[8px] font-bold text-slate-500 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
-                        {playerStats.avgDistance === 0 ? "Parfait 🏎️" : playerStats.avgDistance < 1.5 ? "Chirurgical 🎯" : playerStats.avgDistance <= 3.0 ? "Honorable ⚖️" : "Dans le décor 🌲"} <span className="text-[7px] text-slate-400 font-normal">(Plus bas = mieux)</span>
+
+                      {/* Course */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black uppercase text-blue-600 flex items-center gap-1">
+                            <Flag className="w-3 h-3" /> Course
+                          </span>
+                          <span className="text-xs font-black text-slate-900">{playerStats.racePoints} pts</span>
+                        </div>
+                        <div className="flex items-baseline justify-between pt-1 border-t border-slate-50">
+                          <span className="text-[9px] font-medium text-slate-400">Écart moyen :</span>
+                          <span className="text-sm font-black text-blue-600 tabular-nums">±{playerStats.raceStats.avgDistance} pl.</span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-[9px]">
+                          <span className="font-medium text-slate-400">Rangs exacts :</span>
+                          <span className="font-bold text-slate-700">{playerStats.raceStats.exactCount} ({playerStats.raceStats.totalPredicted ? Math.round((playerStats.raceStats.exactCount / playerStats.raceStats.totalPredicted) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-[9px]">
+                          <span className="font-medium text-slate-400">À ±1 place :</span>
+                          <span className="font-bold text-amber-600">{playerStats.raceStats.nearMissCount} si proche</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PILOTE FÉTICHE & BÊTE NOIRE + PARIS SPÉCIAUX */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Pilote Fétiche */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex flex-col justify-between">
+                      <div>
+                        <div className="text-[8px] font-black uppercase text-emerald-600 mb-1 flex items-center gap-1">
+                          <span>🟢</span> Pilote Fétiche
+                        </div>
+                        {playerStats.bestDriver ? (
+                          <>
+                            <div className="text-sm font-black text-slate-900">{playerStats.bestDriver.driver}</div>
+                            <div className="text-[9px] font-bold text-slate-400 mt-1">
+                              {playerStats.bestDriver.exact} rang(s) exact(s) • Écart ±{playerStats.bestDriver.avgDist} pl.
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-xs text-slate-400 italic">En attente de courses</div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
+                    {/* Bête Noire ou Paris */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex flex-col justify-between">
                       <div>
-                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Présence au Top 10</div>
-                        <div className="text-lg font-black text-slate-900 tabular-nums">
-                          {playerStats.top10PresenceRate.toFixed(0)}%
+                        <div className="text-[8px] font-black uppercase text-rose-600 mb-1 flex items-center gap-1">
+                          <span>🔴</span> {playerStats.worstDriver ? "Bête Noire" : "Paris Spéciaux"}
                         </div>
-                      </div>
-                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
-                        Pilotes devinés dans le Top 10, quel que soit l'ordre.
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
-                      <div>
-                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Rangs Exacts (Qualifs)</div>
-                        <div className="text-lg font-black text-slate-900 tabular-nums">
-                          {playerStats.qualiAccuracy.toFixed(0)}%
-                        </div>
-                      </div>
-                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
-                        Pilotes placés exactement au bon rang en qualifications.
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between min-h-[95px]">
-                      <div>
-                        <div className="text-[8px] font-black text-slate-400 uppercase mb-1">Rangs Exacts (Course)</div>
-                        <div className="text-lg font-black text-slate-900 tabular-nums">
-                          {playerStats.raceAccuracy.toFixed(0)}%
-                        </div>
-                      </div>
-                      <div className="text-[8px] font-bold text-slate-400 mt-2 border-t border-slate-200/50 pt-1 leading-tight">
-                        Pilotes placés exactement au bon rang en course.
+                        {playerStats.worstDriver ? (
+                          <>
+                            <div className="text-sm font-black text-slate-900">{playerStats.worstDriver.driver}</div>
+                            <div className="text-[9px] font-bold text-slate-400 mt-1">
+                              Écart moyen ±{playerStats.worstDriver.avgDist} pl.
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-sm font-black text-slate-900">{playerStats.betsWon} / {playerStats.betsTotal} gagnés</div>
+                            <div className="text-[9px] font-bold text-slate-400 mt-1">
+                              {Math.round(playerStats.betWinRate)}% de réussite
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
-              ) : <div className="py-20 text-center text-[10px] font-black text-slate-300 animate-pulse">Chargement...</div>}
+              ) : (
+                <div className="py-20 text-center text-[10px] font-black text-slate-300 animate-pulse">
+                  Chargement de l'analyse...
+                </div>
+              )}
             </motion.div>
           </div>
         )}

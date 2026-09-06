@@ -42,6 +42,143 @@ export interface DashboardInsights {
 
 export const PLAYERS = ["Hugo", "François", "Carole"];
 
+export const isFemale = (name: string): boolean => {
+  const n = (name || "").trim().toLowerCase();
+  return n === "carole" || n === "caroline" || n === "marie" || n === "sophie" || n === "claire" || n === "camille" || n === "lucie";
+};
+
+export interface PlayerFlairProfile {
+  title: string;
+  tag: string;
+  icon: string;
+  badgeClass: string;
+  description: string;
+}
+
+export const getPlayerFlairProfile = (name: string, stats: { avgDistance: number; nearMissCount: number; exactCount: number; proximityScore: number }): PlayerFlairProfile => {
+  const female = isFemale(name);
+  if (stats.exactCount >= 8 || (stats.avgDistance > 0 && stats.avgDistance <= 1.3)) {
+    return {
+      title: female ? "Snipeuse du Paddock" : "Sniper du Paddock",
+      tag: "Précision chirurgicale",
+      icon: "🎯",
+      badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-200",
+      description: female 
+        ? "Elle place ses pilotes au millimètre près avec une régularité impressionnante."
+        : "Il place ses pilotes au millimètre près avec une régularité impressionnante."
+    };
+  }
+  if (stats.nearMissCount >= 6 || (stats.nearMissCount > stats.exactCount && stats.nearMissCount >= 3)) {
+    return {
+      title: female ? "La Frôleuse d'Élite" : "Le Frôleur d'Élite",
+      tag: "À un cheveu du bonus",
+      icon: "🤏",
+      badgeClass: "bg-amber-50 text-amber-600 border-amber-200",
+      description: female
+        ? "Constamment à une seule place de la vérité, le flair est remarquable !"
+        : "Constamment à une seule place de la vérité, le flair est remarquable !"
+    };
+  }
+  if (stats.proximityScore >= 60) {
+    return {
+      title: "Stratège Émérite",
+      tag: "Vision globale affûtée",
+      icon: "🏁",
+      badgeClass: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      description: female
+        ? "Excellente lecture globale des forces en présence dans le top 10."
+        : "Excellente lecture globale des forces en présence dans le top 10."
+    };
+  }
+  if (stats.proximityScore >= 40) {
+    return {
+      title: female ? "Pilote Régulière" : "Pilote Régulier",
+      tag: "Dans le peloton",
+      icon: "🚗",
+      badgeClass: "bg-blue-50 text-blue-600 border-blue-200",
+      description: female
+        ? "Une constance honorable avec de belles fulgurances le dimanche."
+        : "Une constance honorable avec de belles fulgurances le dimanche."
+    };
+  }
+  return {
+    title: female ? "Audacieuse Hors-Piste" : "Audacieux Hors-Piste",
+    tag: "Paris à haut risque",
+    icon: "🎲",
+    badgeClass: "bg-rose-50 text-rose-600 border-rose-200",
+    description: female
+      ? "Prend des risques fous : tout ou rien à chaque virage !"
+      : "Prend des risques fous : tout ou rien à chaque virage !"
+  };
+};
+
+export interface DetailedStanding {
+  name: string;
+  points: number;
+  qualiPoints: number;
+  racePoints: number;
+  betPoints: number;
+  exactCount: number;
+  nearMissCount: number;
+  top10OnlyCount: number;
+  missCount: number;
+  totalPredicted: number;
+  avgDistance: number;
+  proximityScore: number;
+  profile: PlayerFlairProfile;
+}
+
+export interface DriverStatSummary {
+  driver: string;
+  picks: number;
+  exact: number;
+  near: number;
+  avgDist: number;
+}
+
+export interface PlayerDetailedStats {
+  playerName: string;
+  isFemale: boolean;
+  totalPoints: number;
+  avgPointsPerGP: number;
+  qualiPoints: number;
+  racePoints: number;
+  betPoints: number;
+  betsWon: number;
+  betsTotal: number;
+  betWinRate: number;
+  exactCount: number;
+  nearMissCount: number;
+  top10OnlyCount: number;
+  missCount: number;
+  totalPredicted: number;
+  avgDistance: number;
+  proximityScore: number;
+  profile: PlayerFlairProfile;
+  qualiStats: {
+    exactCount: number;
+    nearMissCount: number;
+    top10OnlyCount: number;
+    missCount: number;
+    totalPredicted: number;
+    avgDistance: number;
+    proximityScore: number;
+  };
+  raceStats: {
+    exactCount: number;
+    nearMissCount: number;
+    top10OnlyCount: number;
+    missCount: number;
+    totalPredicted: number;
+    avgDistance: number;
+    proximityScore: number;
+  };
+  bestDriver: DriverStatSummary | null;
+  worstDriver: DriverStatSummary | null;
+  favoriteDrivers: { name: string; count: number }[];
+  lastScores: { round: number; points: number }[];
+}
+
 export const storageService = {
   async savePrediction(prediction: Omit<Prediction, 'editCount' | 'history'>): Promise<void> {
     // 1. Get existing to compute history
@@ -171,7 +308,7 @@ export const storageService = {
     if (error) throw error;
   },
 
-  async getLeaderboard(): Promise<{ name: string; points: number; qualiPoints: number; racePoints: number; betPoints: number }[]> {
+  async getLeaderboard(): Promise<DetailedStanding[]> {
     const allPredictions = await this.getAllPredictions();
     const allResults = await this.getRaceResults();
     
@@ -179,6 +316,12 @@ export const storageService = {
       let qualiPoints = 0;
       let racePoints = 0;
       let betPoints = 0;
+      let exactCount = 0;
+      let nearMissCount = 0;
+      let top10OnlyCount = 0;
+      let missCount = 0;
+      let totalPredicted = 0;
+      let totalDistance = 0;
       
       Object.entries(allPredictions).forEach(([roundStr, playersPreds]) => {
         const round = parseInt(roundStr);
@@ -186,21 +329,81 @@ export const storageService = {
         const result = allResults[round];
         
         if (pred && result) {
-          pred.qualiPositions.forEach((driver, idx) => {
-            if (driver && driver === result.qualiPositions[idx]) qualiPoints += 1;
-          });
-          pred.racePositions.forEach((driver, idx) => {
-            if (driver && driver === result.racePositions[idx]) racePoints += 1;
-          });
+          // Qualifs
+          if (result.qualiPositions && result.qualiPositions.length > 0) {
+            pred.qualiPositions.forEach((driver, idx) => {
+              if (driver) {
+                totalPredicted++;
+                const actualIdx = result.qualiPositions.indexOf(driver);
+                if (actualIdx !== -1) {
+                  const dist = Math.abs(idx - actualIdx);
+                  totalDistance += dist;
+                  if (dist === 0) {
+                    qualiPoints += 1;
+                    exactCount++;
+                  } else if (dist === 1) {
+                    nearMissCount++;
+                  } else {
+                    top10OnlyCount++;
+                  }
+                } else {
+                  missCount++;
+                  totalDistance += Math.max(1, 10 - idx);
+                }
+              }
+            });
+          }
+
+          // Course
+          if (result.racePositions && result.racePositions.length > 0) {
+            pred.racePositions.forEach((driver, idx) => {
+              if (driver) {
+                totalPredicted++;
+                const actualIdx = result.racePositions.indexOf(driver);
+                if (actualIdx !== -1) {
+                  const dist = Math.abs(idx - actualIdx);
+                  totalDistance += dist;
+                  if (dist === 0) {
+                    racePoints += 1;
+                    exactCount++;
+                  } else if (dist === 1) {
+                    nearMissCount++;
+                  } else {
+                    top10OnlyCount++;
+                  }
+                } else {
+                  missCount++;
+                  totalDistance += Math.max(1, 10 - idx);
+                }
+              }
+            });
+          }
+
           if (pred.betWon) betPoints += 2;
         }
       });
+
+      const avgDistance = totalPredicted ? parseFloat((totalDistance / totalPredicted).toFixed(1)) : 0;
+      const proximityScore = totalPredicted
+        ? Math.max(0, Math.min(100, Math.round(100 * (1 - (totalDistance / (totalPredicted * 5.5))))))
+        : 0;
+
+      const profile = getPlayerFlairProfile(name, { avgDistance, nearMissCount, exactCount, proximityScore });
+
       return { 
         name, 
         points: qualiPoints + racePoints + betPoints,
         qualiPoints,
         racePoints,
-        betPoints
+        betPoints,
+        exactCount,
+        nearMissCount,
+        top10OnlyCount,
+        missCount,
+        totalPredicted,
+        avgDistance,
+        proximityScore,
+        profile
       };
     }).sort((a, b) => b.points - a.points);
   },
@@ -300,26 +503,41 @@ export const storageService = {
     return { rounds, players: results };
   },
 
-  async getPlayerStats(playerName: string) {
+  async getPlayerStats(playerName: string): Promise<PlayerDetailedStats> {
     const allPredictions = await this.getAllPredictions();
     const allResults = await this.getRaceResults();
     
     let totalPoints = 0;
-    let totalQualiCorrect = 0;
-    let totalRaceCorrect = 0;
+    let qualiPoints = 0;
+    let racePoints = 0;
     let betsWon = 0;
     let betsTotal = 0;
     let roundsParticipated = 0;
-    const driverFrequency: Record<string, number> = {};
-    const scoresByRound: { round: number; points: number }[] = [];
 
-    // New metrics variables
-    let accumulatedDistance = 0;
-    let correctDriversCount = 0;
-    let totalCorrectDriversDistance = 0;
-    let totalDriversPredicted = 0;
-    let top10PresenceCount = 0;
-    let gpsWithResults = 0;
+    let exactCount = 0;
+    let nearMissCount = 0;
+    let top10OnlyCount = 0;
+    let missCount = 0;
+    let totalPredicted = 0;
+    let totalDistance = 0;
+
+    let qualiExact = 0;
+    let qualiNear = 0;
+    let qualiTop10Only = 0;
+    let qualiMiss = 0;
+    let qualiTotal = 0;
+    let qualiDistance = 0;
+
+    let raceExact = 0;
+    let raceNear = 0;
+    let raceTop10Only = 0;
+    let raceMiss = 0;
+    let raceTotal = 0;
+    let raceDistance = 0;
+
+    const driverFrequency: Record<string, number> = {};
+    const driverStats: Record<string, { picks: number; exact: number; near: number; totalDist: number }> = {};
+    const scoresByRound: { round: number; points: number }[] = [];
 
     Object.entries(allPredictions).forEach(([roundStr, playersPreds]) => {
       const round = parseInt(roundStr);
@@ -329,63 +547,91 @@ export const storageService = {
       if (pred) {
         roundsParticipated++;
         let roundScore = 0;
-        
         const hasResult = !!result;
-        if (hasResult) {
-          gpsWithResults++;
-        }
 
+        // Qualifications
         pred.qualiPositions.forEach((driver, idx) => {
-          if (driver) {
-            driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
-            
-            if (hasResult) {
-              totalDriversPredicted++;
-              if (driver === result.qualiPositions[idx]) {
+          if (!driver) return;
+          driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
+
+          if (hasResult && result.qualiPositions && result.qualiPositions.length > 0) {
+            totalPredicted++;
+            qualiTotal++;
+            const dRec = driverStats[driver] = driverStats[driver] || { picks: 0, exact: 0, near: 0, totalDist: 0 };
+            dRec.picks++;
+
+            const actualIdx = result.qualiPositions.indexOf(driver);
+            if (actualIdx !== -1) {
+              const dist = Math.abs(idx - actualIdx);
+              totalDistance += dist;
+              qualiDistance += dist;
+              dRec.totalDist += dist;
+
+              if (dist === 0) {
                 roundScore += 1;
-                totalQualiCorrect++;
-              }
-              
-              const actualIdx = result.qualiPositions.indexOf(driver);
-              if (actualIdx !== -1) {
-                top10PresenceCount++;
-                const dist = Math.abs(idx - actualIdx);
-                accumulatedDistance += dist;
-                totalCorrectDriversDistance += dist;
-                correctDriversCount++;
+                qualiPoints += 1;
+                exactCount++;
+                qualiExact++;
+                dRec.exact++;
+              } else if (dist === 1) {
+                nearMissCount++;
+                qualiNear++;
+                dRec.near++;
               } else {
-                accumulatedDistance += 10; // penalty for missing top 10
+                top10OnlyCount++;
+                qualiTop10Only++;
               }
+            } else {
+              const penalty = Math.max(1, 10 - idx);
+              totalDistance += penalty;
+              qualiDistance += penalty;
+              dRec.totalDist += penalty;
+              missCount++;
+              qualiMiss++;
             }
-          } else if (hasResult) {
-            accumulatedDistance += 10; // penalty for empty prediction
           }
         });
 
+        // Course
         pred.racePositions.forEach((driver, idx) => {
-          if (driver) {
-            driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
-            
-            if (hasResult) {
-              totalDriversPredicted++;
-              if (driver === result.racePositions[idx]) {
+          if (!driver) return;
+          driverFrequency[driver] = (driverFrequency[driver] || 0) + 1;
+
+          if (hasResult && result.racePositions && result.racePositions.length > 0) {
+            totalPredicted++;
+            raceTotal++;
+            const dRec = driverStats[driver] = driverStats[driver] || { picks: 0, exact: 0, near: 0, totalDist: 0 };
+            dRec.picks++;
+
+            const actualIdx = result.racePositions.indexOf(driver);
+            if (actualIdx !== -1) {
+              const dist = Math.abs(idx - actualIdx);
+              totalDistance += dist;
+              raceDistance += dist;
+              dRec.totalDist += dist;
+
+              if (dist === 0) {
                 roundScore += 1;
-                totalRaceCorrect++;
-              }
-              
-              const actualIdx = result.racePositions.indexOf(driver);
-              if (actualIdx !== -1) {
-                top10PresenceCount++;
-                const dist = Math.abs(idx - actualIdx);
-                accumulatedDistance += dist;
-                totalCorrectDriversDistance += dist;
-                correctDriversCount++;
+                racePoints += 1;
+                exactCount++;
+                raceExact++;
+                dRec.exact++;
+              } else if (dist === 1) {
+                nearMissCount++;
+                raceNear++;
+                dRec.near++;
               } else {
-                accumulatedDistance += 10; // penalty for missing top 10
+                top10OnlyCount++;
+                raceTop10Only++;
               }
+            } else {
+              const penalty = Math.max(1, 10 - idx);
+              totalDistance += penalty;
+              raceDistance += penalty;
+              dRec.totalDist += penalty;
+              missCount++;
+              raceMiss++;
             }
-          } else if (hasResult) {
-            accumulatedDistance += 10; // penalty for empty prediction
           }
         });
 
@@ -407,30 +653,79 @@ export const storageService = {
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
 
-    const proximityScore = gpsWithResults 
-      ? 100 * (1 - accumulatedDistance / (gpsWithResults * 200))
+    const avgDistance = totalPredicted ? parseFloat((totalDistance / totalPredicted).toFixed(1)) : 0;
+    const proximityScore = totalPredicted 
+      ? Math.max(0, Math.min(100, Math.round(100 * (1 - (totalDistance / (totalPredicted * 5.5))))))
       : 0;
 
-    const avgDistance = correctDriversCount 
-      ? totalCorrectDriversDistance / correctDriversCount
+    const qualiAvgDistance = qualiTotal ? parseFloat((qualiDistance / qualiTotal).toFixed(1)) : 0;
+    const qualiProximityScore = qualiTotal
+      ? Math.max(0, Math.min(100, Math.round(100 * (1 - (qualiDistance / (qualiTotal * 5.5))))))
       : 0;
 
-    const top10PresenceRate = totalDriversPredicted 
-      ? (top10PresenceCount / totalDriversPredicted) * 100
+    const raceAvgDistance = raceTotal ? parseFloat((raceDistance / raceTotal).toFixed(1)) : 0;
+    const raceProximityScore = raceTotal
+      ? Math.max(0, Math.min(100, Math.round(100 * (1 - (raceDistance / (raceTotal * 5.5))))))
       : 0;
+
+    // Drivers breakdown
+    const driverList: DriverStatSummary[] = Object.entries(driverStats).map(([driver, s]) => ({
+      driver,
+      picks: s.picks,
+      exact: s.exact,
+      near: s.near,
+      avgDist: s.picks ? parseFloat((s.totalDist / s.picks).toFixed(1)) : 0
+    }));
+
+    const eligibleBest = [...driverList].sort((a, b) => b.exact !== a.exact ? b.exact - a.exact : a.avgDist - b.avgDist);
+    const bestDriver = eligibleBest.length > 0 && (eligibleBest[0].exact > 0 || eligibleBest[0].near > 0) ? eligibleBest[0] : (eligibleBest[0] || null);
+
+    const eligibleWorst = [...driverList].filter(d => !bestDriver || d.driver !== bestDriver.driver).sort((a, b) => b.avgDist - a.avgDist);
+    const worstDriver = eligibleWorst.length > 0 ? eligibleWorst[0] : null;
+
+    const profile = getPlayerFlairProfile(playerName, { avgDistance, nearMissCount, exactCount, proximityScore });
 
     return {
       playerName,
+      isFemale: isFemale(playerName),
       totalPoints,
       avgPointsPerGP: roundsParticipated ? totalPoints / roundsParticipated : 0,
-      qualiAccuracy: roundsParticipated ? (totalQualiCorrect / (roundsParticipated * 10)) * 100 : 0,
-      raceAccuracy: roundsParticipated ? (totalRaceCorrect / (roundsParticipated * 10)) * 100 : 0,
+      qualiPoints,
+      racePoints,
+      betPoints: betsWon * 2,
+      betsWon,
+      betsTotal,
       betWinRate: betsTotal ? (betsWon / betsTotal) * 100 : 0,
-      favoriteDrivers,
-      lastScores: scoresByRound.sort((a, b) => b.round - a.round).slice(0, 5).reverse(),
-      proximityScore,
+      exactCount,
+      nearMissCount,
+      top10OnlyCount,
+      missCount,
+      totalPredicted,
       avgDistance,
-      top10PresenceRate
+      proximityScore,
+      profile,
+      qualiStats: {
+        exactCount: qualiExact,
+        nearMissCount: qualiNear,
+        top10OnlyCount: qualiTop10Only,
+        missCount: qualiMiss,
+        totalPredicted: qualiTotal,
+        avgDistance: qualiAvgDistance,
+        proximityScore: qualiProximityScore
+      },
+      raceStats: {
+        exactCount: raceExact,
+        nearMissCount: raceNear,
+        top10OnlyCount: raceTop10Only,
+        missCount: raceMiss,
+        totalPredicted: raceTotal,
+        avgDistance: raceAvgDistance,
+        proximityScore: raceProximityScore
+      },
+      bestDriver,
+      worstDriver,
+      favoriteDrivers,
+      lastScores: scoresByRound.sort((a, b) => b.round - a.round).slice(0, 5).reverse()
     };
   }
 };
