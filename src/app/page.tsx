@@ -222,9 +222,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Classement</span>
-                    <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-white border border-slate-200/80 text-slate-700 shadow-xs">
-                      {rankLabel} au général
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Écart moyen</span>
+                    <span className="text-xl font-black text-indigo-600 tabular-nums">
+                      ±{p.avgDistance || 0} <span className="text-[10px] font-bold text-slate-400">pl.</span>
                     </span>
                   </div>
                 </div>
@@ -276,9 +276,9 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between text-[9px] font-black uppercase text-slate-500">
                     <span className="flex items-center gap-1">
                       <Target className="w-3 h-3 text-indigo-500" />
-                      Proximité : ±{p.avgDistance || 0} pl.
+                      Indice de précision
                     </span>
-                    <span className="text-indigo-600 font-bold">{p.proximityScore || 0}% flair</span>
+                    <span className="text-indigo-600 font-bold">{p.proximityScore || 0}% de flair</span>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 text-[10px] font-bold">

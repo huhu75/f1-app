@@ -55,9 +55,66 @@ export interface PlayerFlairProfile {
   description: string;
 }
 
-export const getPlayerFlairProfile = (name: string, stats: { avgDistance: number; nearMissCount: number; exactCount: number; proximityScore: number }): PlayerFlairProfile => {
+export const getPlayerFlairProfile = (
+  name: string,
+  stats: {
+    avgDistance: number;
+    nearMissCount: number;
+    exactCount: number;
+    proximityScore: number;
+    qualiPoints?: number;
+    racePoints?: number;
+    points?: number;
+  },
+  context?: {
+    isLeader?: boolean;
+    isBestQuali?: boolean;
+    isBestNear?: boolean;
+  }
+): PlayerFlairProfile => {
   const female = isFemale(name);
-  if (stats.exactCount >= 8 || (stats.avgDistance > 0 && stats.avgDistance <= 1.3)) {
+
+  // 1. Leader du championnat / Maître de la course
+  if (context?.isLeader) {
+    return {
+      title: female ? "La Reine de la Course" : "Le Maître de la Course",
+      tag: "Leader du Général",
+      icon: "🏁",
+      badgeClass: female ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-blue-600 border-blue-200",
+      description: female
+        ? "Excellente vision stratégique le dimanche : elle fait la différence en course et sur les paris."
+        : "Excellente vision stratégique le dimanche : il fait la différence en course et sur les paris."
+    };
+  }
+
+  // 2. Chasseur de pôles (le meilleur en qualifications)
+  if (context?.isBestQuali || (stats.qualiPoints !== undefined && stats.racePoints !== undefined && stats.qualiPoints > stats.racePoints + 5)) {
+    return {
+      title: female ? "Chasseuse de Pôles" : "Chasseur de Pôles",
+      tag: stats.qualiPoints ? `Leader Qualifs (${stats.qualiPoints} pts)` : "Expert du samedi",
+      icon: "⏱️",
+      badgeClass: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      description: female
+        ? "Impressionnante le samedi sur le tour chrono : elle trouve les pôles et le top 5 avec brio."
+        : "Impressionnant le samedi sur le tour chrono : il trouve les pôles et le top 5 avec brio."
+    };
+  }
+
+  // 3. Le Frôleur d'élite (le plus de quasi-tirs / meilleur écart moyen)
+  if (context?.isBestNear || stats.nearMissCount >= 45 || (stats.avgDistance > 0 && stats.avgDistance <= 2.05)) {
+    return {
+      title: female ? "La Frôleuse d'Élite" : "Le Frôleur d'Élite",
+      tag: `${stats.nearMissCount} fois à ±1 place`,
+      icon: "🤏",
+      badgeClass: "bg-amber-50 text-amber-600 border-amber-200",
+      description: female
+        ? "Précision chirurgicale et flair affûté : constamment à un cheveu du bonus parfait !"
+        : "Précision chirurgicale et flair affûté : constamment à un cheveu du bonus parfait !"
+    };
+  }
+
+  // 4. Sniper (si taux d'exacts particulièrement élevé)
+  if (stats.exactCount >= 45 || (stats.avgDistance > 0 && stats.avgDistance <= 1.7)) {
     return {
       title: female ? "Snipeuse du Paddock" : "Sniper du Paddock",
       tag: "Précision chirurgicale",
@@ -68,47 +125,16 @@ export const getPlayerFlairProfile = (name: string, stats: { avgDistance: number
         : "Il place ses pilotes au millimètre près avec une régularité impressionnante."
     };
   }
-  if (stats.nearMissCount >= 6 || (stats.nearMissCount > stats.exactCount && stats.nearMissCount >= 3)) {
-    return {
-      title: female ? "La Frôleuse d'Élite" : "Le Frôleur d'Élite",
-      tag: "À un cheveu du bonus",
-      icon: "🤏",
-      badgeClass: "bg-amber-50 text-amber-600 border-amber-200",
-      description: female
-        ? "Constamment à une seule place de la vérité, le flair est remarquable !"
-        : "Constamment à une seule place de la vérité, le flair est remarquable !"
-    };
-  }
-  if (stats.proximityScore >= 60) {
-    return {
-      title: "Stratège Émérite",
-      tag: "Vision globale affûtée",
-      icon: "🏁",
-      badgeClass: "bg-indigo-50 text-indigo-600 border-indigo-200",
-      description: female
-        ? "Excellente lecture globale des forces en présence dans le top 10."
-        : "Excellente lecture globale des forces en présence dans le top 10."
-    };
-  }
-  if (stats.proximityScore >= 40) {
-    return {
-      title: female ? "Pilote Régulière" : "Pilote Régulier",
-      tag: "Dans le peloton",
-      icon: "🚗",
-      badgeClass: "bg-blue-50 text-blue-600 border-blue-200",
-      description: female
-        ? "Une constance honorable avec de belles fulgurances le dimanche."
-        : "Une constance honorable avec de belles fulgurances le dimanche."
-    };
-  }
+
+  // 5. Profil régulier par défaut
   return {
-    title: female ? "Audacieuse Hors-Piste" : "Audacieux Hors-Piste",
-    tag: "Paris à haut risque",
-    icon: "🎲",
-    badgeClass: "bg-rose-50 text-rose-600 border-rose-200",
+    title: female ? "Pilote Régulière" : "Pilote Régulier",
+    tag: "Dans le peloton",
+    icon: "🚗",
+    badgeClass: "bg-slate-50 text-slate-600 border-slate-200",
     description: female
-      ? "Prend des risques fous : tout ou rien à chaque virage !"
-      : "Prend des risques fous : tout ou rien à chaque virage !"
+      ? "Une constance honorable avec de belles fulgurances le week-end."
+      : "Une constance honorable avec de belles fulgurances le week-end."
   };
 };
 
@@ -312,7 +338,7 @@ export const storageService = {
     const allPredictions = await this.getAllPredictions();
     const allResults = await this.getRaceResults();
     
-    return PLAYERS.map(name => {
+    const rawStandings = PLAYERS.map(name => {
       let qualiPoints = 0;
       let racePoints = 0;
       let betPoints = 0;
@@ -388,8 +414,6 @@ export const storageService = {
         ? Math.max(0, Math.min(100, Math.round(100 * (1 - (totalDistance / (totalPredicted * 5.5))))))
         : 0;
 
-      const profile = getPlayerFlairProfile(name, { avgDistance, nearMissCount, exactCount, proximityScore });
-
       return { 
         name, 
         points: qualiPoints + racePoints + betPoints,
@@ -402,10 +426,30 @@ export const storageService = {
         missCount,
         totalPredicted,
         avgDistance,
-        proximityScore,
-        profile
+        proximityScore
       };
     }).sort((a, b) => b.points - a.points);
+
+    const maxQuali = Math.max(...rawStandings.map(p => p.qualiPoints), 0);
+    const maxNear = Math.max(...rawStandings.map(p => p.nearMissCount), 0);
+    const leaderName = rawStandings[0]?.name;
+
+    return rawStandings.map(p => {
+      const isLeader = p.name === leaderName;
+      const isBestQuali = !isLeader && p.qualiPoints === maxQuali;
+      const isBestNear = !isLeader && !isBestQuali && (p.nearMissCount === maxNear || p.nearMissCount >= 45);
+
+      const profile = getPlayerFlairProfile(p.name, p, {
+        isLeader,
+        isBestQuali,
+        isBestNear
+      });
+
+      return {
+        ...p,
+        profile
+      };
+    });
   },
 
   async getInsights(): Promise<DashboardInsights> {
@@ -683,7 +727,9 @@ export const storageService = {
     const eligibleWorst = [...driverList].filter(d => !bestDriver || d.driver !== bestDriver.driver).sort((a, b) => b.avgDist - a.avgDist);
     const worstDriver = eligibleWorst.length > 0 ? eligibleWorst[0] : null;
 
-    const profile = getPlayerFlairProfile(playerName, { avgDistance, nearMissCount, exactCount, proximityScore });
+    const leaderboard = await this.getLeaderboard();
+    const playerStanding = leaderboard.find(l => l.name === playerName);
+    const profile = playerStanding?.profile || getPlayerFlairProfile(playerName, { avgDistance, nearMissCount, exactCount, proximityScore, qualiPoints, racePoints, points: totalPoints });
 
     return {
       playerName,
