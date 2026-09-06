@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, AlertCircle, Check, Loader2, Trophy, Zap, Flag, MessageSquare, History, ChevronRight, Calendar, Lock } from "lucide-react";
+import { Save, AlertCircle, Check, Loader2, Trophy, Zap, Flag, MessageSquare, History, ChevronRight, ChevronUp, ChevronDown, Calendar, Lock } from "lucide-react";
 import { teams2026, getNextRace, formatCountdown, getNextRaceFromList } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
 import CalendarManager from "@/components/CalendarManager";
@@ -91,6 +91,28 @@ export default function Pronostics() {
     if (isRaceLocked) return;
     const newSelections = [...raceSelections];
     newSelections[index] = value;
+    setRaceSelections(newSelections);
+  };
+
+  const moveQualiPosition = (fromIndex: number, direction: -1 | 1) => {
+    if (isQualiLocked) return;
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= 10) return;
+    const newSelections = [...qualiSelections];
+    const temp = newSelections[fromIndex];
+    newSelections[fromIndex] = newSelections[toIndex];
+    newSelections[toIndex] = temp;
+    setQualiSelections(newSelections);
+  };
+
+  const moveRacePosition = (fromIndex: number, direction: -1 | 1) => {
+    if (isRaceLocked) return;
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= 10) return;
+    const newSelections = [...raceSelections];
+    const temp = newSelections[fromIndex];
+    newSelections[fromIndex] = newSelections[toIndex];
+    newSelections[toIndex] = temp;
     setRaceSelections(newSelections);
   };
 
@@ -298,9 +320,30 @@ export default function Pronostics() {
           </div>
           <div className="p-6 space-y-3">
             {positions.map((index) => (
-              <div key={`quali-${index}`} className="flex items-center gap-4 relative">
-                <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50">
+              <div key={`quali-${index}`} className="flex items-center gap-2.5 relative">
+                <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50 shrink-0">
                   {index + 1}
+                </div>
+                {/* Swap controls */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    disabled={index === 0 || isQualiLocked}
+                    onClick={() => moveQualiPosition(index, -1)}
+                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    title="Monter d'une place"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === 9 || isQualiLocked}
+                    onClick={() => moveQualiPosition(index, 1)}
+                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    title="Descendre d'une place"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <div className="flex-1 relative">
                   <select 
@@ -337,14 +380,47 @@ export default function Pronostics() {
         {/* COURSE */}
         <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isRaceLocked ? 'opacity-70' : 'opacity-100'}`}>
           <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Course</h2>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Course</h2>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
+            </div>
+            {!isRaceLocked && (
+              <button
+                type="button"
+                onClick={() => setRaceSelections([...qualiSelections])}
+                className="text-[9px] font-black uppercase tracking-wider text-[#2b62e3] hover:text-[#1d4ed8] hover:underline transition-colors"
+                title="Copier la grille des qualifications vers la course"
+              >
+                Dupliquer Qualifs ↷
+              </button>
+            )}
           </div>
           <div className="p-6 space-y-3">
             {positions.map((index) => (
-              <div key={`race-${index}`} className="flex items-center gap-4 relative">
-                <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50">
+              <div key={`race-${index}`} className="flex items-center gap-2.5 relative">
+                <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50 shrink-0">
                   {index + 1}
+                </div>
+                {/* Swap controls */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    disabled={index === 0 || isRaceLocked}
+                    onClick={() => moveRacePosition(index, -1)}
+                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    title="Monter d'une place"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === 9 || isRaceLocked}
+                    onClick={() => moveRacePosition(index, 1)}
+                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    title="Descendre d'une place"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <div className="flex-1 relative">
                   <select 

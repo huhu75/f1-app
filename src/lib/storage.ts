@@ -25,6 +25,7 @@ export interface Prediction {
   updatedAt: string;
   editCount: number;
   history: PredictionHistory[];
+  reactions?: Record<string, string[]>;
 }
 
 export interface RaceResult {
@@ -255,7 +256,8 @@ export const storageService = {
         bet_won: existing?.bet_won, // Preserve bet status if exists
         updated_at: new Date().toISOString(),
         edit_count: editCount,
-        history: history
+        history: history,
+        reactions: existing?.reactions || {}
       }, { onConflict: 'round,player_name' });
 
     if (error) throw error;
@@ -284,7 +286,8 @@ export const storageService = {
         betWon: row.bet_won,
         updatedAt: row.updated_at,
         editCount: row.edit_count,
-        history: row.history
+        history: row.history,
+        reactions: row.reactions || {}
       };
     });
     return result;
@@ -332,6 +335,44 @@ export const storageService = {
       .eq('player_name', playerName);
 
     if (error) throw error;
+  },
+
+  async toggleBetReaction(round: number, targetPlayer: string, emoji: string, reactorName: string): Promise<Record<string, string[]>> {
+    // 1. Get current reactions from Supabase
+    const { data: existing } = await supabase
+      .from('predictions')
+      .select('reactions')
+      .eq('round', round)
+      .eq('player_name', targetPlayer)
+      .single();
+
+    const currentReactions: Record<string, string[]> = { ...(existing?.reactions || {}) };
+    const reactors: string[] = currentReactions[emoji] ? [...currentReactions[emoji]] : [];
+    const idx = reactors.indexOf(reactorName);
+
+    if (idx !== -1) {
+      reactors.splice(idx, 1);
+    } else {
+      reactors.push(reactorName);
+    }
+
+    if (reactors.length > 0) {
+      currentReactions[emoji] = reactors;
+    } else {
+      delete currentReactions[emoji];
+    }
+
+    try {
+      await supabase
+        .from('predictions')
+        .update({ reactions: currentReactions })
+        .eq('round', round)
+        .eq('player_name', targetPlayer);
+    } catch (e) {
+      console.warn("Could not persist reaction to Supabase:", e);
+    }
+
+    return currentReactions;
   },
 
   async getLeaderboard(): Promise<DetailedStanding[]> {

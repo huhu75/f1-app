@@ -1,14 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer } from "lucide-react";
+import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer, MessageSquare } from "lucide-react";
 import { getNextRaceFromList, formatCountdown } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS, DetailedStanding, PlayerDetailedStats, isFemale } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
 import CalendarManager from "@/components/CalendarManager";
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
+
+const AVAILABLE_EMOJIS = [
+  { emoji: "🔥", label: "Audacieux" },
+  { emoji: "💀", label: "Risqué" },
+  { emoji: "🤡", label: "Farfelu" },
+  { emoji: "🎯", label: "Sniper" },
+];
+
+// Custom Tooltip component for the Championship Line Chart
+const CustomLineTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const gpName = payload[0]?.payload?.gpName || label;
+    const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));
+    return (
+      <div className="backdrop-blur-md bg-white/95 border border-slate-200/50 p-3.5 rounded-2xl shadow-xl min-w-[190px]">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+          <p className="text-xs font-black uppercase tracking-wider text-slate-800">{gpName}</p>
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+        </div>
+        <div className="space-y-1.5">
+          {sorted.map((entry: any) => (
+            <div key={entry.name} className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                <span className="font-bold text-slate-700 uppercase text-[11px]">{entry.name}</span>
+              </div>
+              <span className="font-black tabular-nums text-slate-900">{entry.value} pts</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 // Custom Tooltip component for the 100% stacked points distribution chart
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -77,6 +112,63 @@ export default function Dashboard() {
   // Player Detail Modal State
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<any>(null);
+
+  // Active user for emoji reactions (stored in localStorage)
+  const [activePlayer, setActivePlayer] = useState<string>("Hugo");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("f1_active_player");
+      if (saved && PLAYERS.includes(saved)) {
+        setActivePlayer(saved);
+      }
+    }
+  }, []);
+
+  const changeActivePlayer = (name: string) => {
+    setActivePlayer(name);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("f1_active_player", name);
+    }
+  };
+
+  const handleReaction = async (targetPlayer: string, emoji: string) => {
+    const currentPred = viewerPredictions[targetPlayer];
+    if (!currentPred) return;
+
+    const currentReactions: Record<string, string[]> = { ...(currentPred.reactions || {}) };
+    const voters = currentReactions[emoji] ? [...currentReactions[emoji]] : [];
+    const idx = voters.indexOf(activePlayer);
+    if (idx !== -1) {
+      voters.splice(idx, 1);
+    } else {
+      voters.push(activePlayer);
+    }
+    if (voters.length > 0) {
+      currentReactions[emoji] = voters;
+    } else {
+      delete currentReactions[emoji];
+    }
+
+    // Optimistic UI update
+    setViewerPredictions(prev => ({
+      ...prev,
+      [targetPlayer]: {
+        ...prev[targetPlayer],
+        reactions: currentReactions
+      }
+    }));
+
+    // Server update
+    const updated = await storageService.toggleBetReaction(viewerRound, targetPlayer, emoji, activePlayer);
+    setViewerPredictions(prev => ({
+      ...prev,
+      [targetPlayer]: {
+        ...prev[targetPlayer],
+        reactions: updated
+      }
+    }));
+  };
 
   const loadAllData = async () => {
     setIsLoading(true);
@@ -184,6 +276,25 @@ export default function Dashboard() {
       racePercent,
       betPercent,
     };
+  });
+
+  // Cumulative progress data for Championship Line Chart
+  const roundsWithData = (seasonProgress?.rounds || []).filter((round, rIdx) => {
+    const hasScore = seasonProgress?.players.some(p => (p.scores[rIdx] || 0) > 0);
+    return hasScore || round === 1;
+  });
+
+  const seasonLineData = roundsWithData.map((round) => {
+    const rIdx = seasonProgress?.rounds.indexOf(round) ?? -1;
+    const race = calendar.find(c => c.round === round);
+    const point: Record<string, any> = {
+      round: `R${round}`,
+      gpName: race?.name || `Round ${round}`,
+    };
+    seasonProgress?.players.forEach(p => {
+      point[p.name] = rIdx !== -1 ? (p.cumulative[rIdx] || 0) : 0;
+    });
+    return point;
   });
 
   if (isLoading) return (
@@ -456,70 +567,126 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* SESSION COMPARISON 100% STACKED BAR CHART */}
-      <section className="bg-white border border-slate-100 p-5 sm:p-6 rounded-3xl shadow-sm relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-10">
-          <div>
-            <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Analyse Comparative</h2>
-            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points</p>
-          </div>
-          
-          {/* Custom HTML Legend */}
-          <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
-              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-xs" />
-              <span>Qualifs</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
-              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 shadow-xs" />
-              <span>Course</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
-              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 shadow-xs" />
-              <span>Paris</span>
-            </div>
-          </div>
-        </div>
+      {/* COMBINED COMPARATIVE ANALYSIS & CHAMPIONSHIP TRAJECTORY */}
+      <section className="bg-white border border-slate-100 p-5 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden">
+        {/* Subtle glow background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/5 via-blue-500/5 to-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-28 -mt-28" />
 
-        <div className="h-[210px] w-full relative z-10">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData100} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="qualiGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#818cf8" />
-                </linearGradient>
-                <linearGradient id="raceGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="100%" stopColor="#38bdf8" />
-                </linearGradient>
-                <linearGradient id="betGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" />
-                  <stop offset="100%" stopColor="#fbbf24" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                domain={[0, 100]}
-                ticks={[0, 25, 50, 75, 100]}
-                tickFormatter={(v) => `${v}%`}
-                tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} 
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 8 }}
-                content={<CustomTooltip />}
-              />
-              <Bar dataKey="qualiPercent" name="Qualifs" stackId="points100" fill="url(#qualiGrad)" barSize={34} />
-              <Bar dataKey="racePercent" name="Course" stackId="points100" fill="url(#raceGrad)" barSize={34} />
-              <Bar dataKey="betPercent" name="Paris" stackId="points100" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 relative z-10">
+          {/* 1. LEFT: CHAMPIONSHIP PROGRESSION LINE CHART */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Course au Titre</h2>
+                <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Évolution des Points</p>
+              </div>
+
+              {/* Player pills legend */}
+              <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider text-slate-600">
+                {PLAYERS.map(name => (
+                  <div key={`legend-${name}`} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                    <span className="w-2 h-2 rounded-full shadow-xs" style={{ backgroundColor: getPlayerColor(name) }} />
+                    <span>{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-[220px] w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={seasonLineData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="round" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} 
+                  />
+                  <Tooltip content={<CustomLineTooltip />} />
+                  {PLAYERS.map(name => (
+                    <Line
+                      key={`line-${name}`}
+                      type="monotone"
+                      dataKey={name}
+                      stroke={getPlayerColor(name)}
+                      strokeWidth={3}
+                      dot={{ r: 3.5, strokeWidth: 2, stroke: getPlayerColor(name), fill: '#ffffff' }}
+                      activeDot={{ r: 6, stroke: getPlayerColor(name), strokeWidth: 2, fill: '#ffffff' }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 2. RIGHT: 100% STACKED BAR CHART */}
+          <div className="space-y-4 pt-6 lg:pt-0 lg:pl-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Équilibre des Forces</h2>
+                <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points</p>
+              </div>
+
+              {/* Custom HTML Legend */}
+              <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-xs" />
+                  <span>Qualifs</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 shadow-xs" />
+                  <span>Course</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 shadow-xs" />
+                  <span>Paris</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-[220px] w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData100} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="qualiGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#818cf8" />
+                    </linearGradient>
+                    <linearGradient id="raceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" />
+                      <stop offset="100%" stopColor="#38bdf8" />
+                    </linearGradient>
+                    <linearGradient id="betGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" />
+                      <stop offset="100%" stopColor="#fbbf24" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    domain={[0, 100]}
+                    ticks={[0, 25, 50, 75, 100]}
+                    tickFormatter={(v) => `${v}%`}
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} 
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 8 }}
+                    content={<CustomTooltip />}
+                  />
+                  <Bar dataKey="qualiPercent" name="Qualifs" stackId="points100" fill="url(#qualiGrad)" barSize={34} />
+                  <Bar dataKey="racePercent" name="Course" stackId="points100" fill="url(#raceGrad)" barSize={34} />
+                  <Bar dataKey="betPercent" name="Paris" stackId="points100" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -648,25 +815,89 @@ export default function Dashboard() {
         
         {Object.keys(viewerPredictions).length > 0 && (
           <div className="bg-slate-50/30 p-6 border-t border-slate-100">
-            <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4 italic">Paris Spéciaux</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                  Paris Spéciaux & Réactions
+                </h4>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  Réagis d'un clic aux prédictions de tes adversaires
+                </p>
+              </div>
+
+              {/* Identity switcher for reactions */}
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-xs">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Tu réagis en :</span>
+                <div className="flex gap-1">
+                  {PLAYERS.map(p => (
+                    <button
+                      key={`react-user-${p}`}
+                      type="button"
+                      onClick={() => changeActivePlayer(p)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                        activePlayer === p 
+                          ? 'bg-slate-900 text-white shadow-xs' 
+                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Object.entries(viewerPredictions).map(([name, pred]) => (
-                <div key={`bet-${name}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between min-h-[100px]">
+                <div key={`bet-${name}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between min-h-[140px] hover:border-slate-200 transition-all">
                   <div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase mb-2 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getPlayerColor(name) }} />
-                      {name}
-                    </div>
-                    <div className="text-[11px] font-bold text-slate-700 leading-snug">"{pred.specialBet || "—"}"</div>
-                  </div>
-                  <div className="mt-4">
-                    {pred.betWon !== undefined ? (
-                      <div className={`inline-flex items-center gap-1 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${pred.betWon ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                        {pred.betWon ? '✓ Gagné (+2)' : '✗ Perdu (0)'}
+                    <div className="text-[9px] font-black text-slate-400 uppercase mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getPlayerColor(name) }} />
+                        <span>{name}</span>
                       </div>
-                    ) : (
-                      <div className="text-[8px] font-black uppercase text-slate-300 italic">En attente</div>
-                    )}
+                      {pred.betWon !== undefined ? (
+                        <div className={`inline-flex items-center gap-1 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${pred.betWon ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                          {pred.betWon ? '✓ Gagné (+2)' : '✗ Perdu (0)'}
+                        </div>
+                      ) : (
+                        <div className="text-[8px] font-black uppercase text-slate-300 italic">En attente</div>
+                      )}
+                    </div>
+                    <div className="text-[12px] font-bold text-slate-800 leading-snug">&ldquo;{pred.specialBet || "—"}&rdquo;</div>
+                  </div>
+
+                  {/* Reactions bar */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100 mt-4">
+                    {AVAILABLE_EMOJIS.map(({ emoji, label }) => {
+                      const voters = (pred.reactions && pred.reactions[emoji]) || [];
+                      const hasVoted = voters.includes(activePlayer);
+                      const count = voters.length;
+
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleReaction(name, emoji)}
+                          title={voters.length > 0 ? `${label} • Réagi par : ${voters.join(', ')}` : `${label} • Cliquez pour réagir`}
+                          className={`group/btn relative flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all active:scale-95 ${
+                            hasVoted
+                              ? 'bg-amber-50 border border-amber-300 text-amber-900 shadow-xs ring-1 ring-amber-200'
+                              : count > 0
+                                ? 'bg-slate-50 border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                                : 'bg-transparent border border-transparent hover:border-slate-200 hover:bg-slate-50 text-slate-400'
+                          }`}
+                        >
+                          <span className="text-sm leading-none transition-transform group-hover/btn:scale-125">{emoji}</span>
+                          {count > 0 && (
+                            <span className={`text-[10px] font-black tabular-nums ${hasVoted ? 'text-amber-700' : 'text-slate-500'}`}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

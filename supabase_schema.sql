@@ -10,9 +10,13 @@ create table if not exists predictions (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   edit_count integer default 0,
   history jsonb default '[]'::jsonb,
+  reactions jsonb default '{}'::jsonb,
   
   unique(round, player_name)
 );
+
+-- Migration pour les bases existantes :
+-- alter table predictions add column if not exists reactions jsonb default '{}'::jsonb;
 
 -- Table des résultats officiels
 create table if not exists race_results (
