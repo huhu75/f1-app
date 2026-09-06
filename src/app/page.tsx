@@ -10,19 +10,31 @@ import CalendarManager from "@/components/CalendarManager";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
-// Custom Tooltip component for the points distribution chart
+// Custom Tooltip component for the 100% stacked points distribution chart
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const total = payload.reduce((acc: number, entry: any) => acc + (entry.value || 0), 0);
+    const data = payload[0]?.payload;
+    const rawTotal = data?.rawTotal ?? 0;
     return (
-      <div className="backdrop-blur-md bg-white/95 border border-slate-200/50 p-4 rounded-2xl shadow-xl min-w-[200px] transition-all duration-200">
-        <p className="text-xs font-black uppercase tracking-wider text-slate-800 mb-2.5 border-b border-slate-100 pb-1.5">{label}</p>
+      <div className="backdrop-blur-md bg-white/95 border border-slate-200/50 p-4 rounded-2xl shadow-xl min-w-[210px] transition-all duration-200">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2.5">
+          <p className="text-xs font-black uppercase tracking-wider text-slate-800">{label}</p>
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total : {rawTotal} pts</span>
+        </div>
         <div className="space-y-2">
           {payload.map((entry: any) => {
             let gradColor = "";
-            if (entry.dataKey === "qualiPoints") gradColor = "bg-gradient-to-r from-indigo-500 to-purple-500";
-            else if (entry.dataKey === "racePoints") gradColor = "bg-gradient-to-r from-blue-500 to-cyan-500";
-            else if (entry.dataKey === "betPoints") gradColor = "bg-gradient-to-r from-amber-500 to-yellow-500";
+            let rawVal = 0;
+            if (entry.dataKey === "qualiPercent") {
+              gradColor = "bg-gradient-to-r from-indigo-500 to-purple-500";
+              rawVal = data?.rawQuali ?? 0;
+            } else if (entry.dataKey === "racePercent") {
+              gradColor = "bg-gradient-to-r from-blue-500 to-cyan-500";
+              rawVal = data?.rawRace ?? 0;
+            } else if (entry.dataKey === "betPercent") {
+              gradColor = "bg-gradient-to-r from-amber-500 to-yellow-500";
+              rawVal = data?.rawBet ?? 0;
+            }
             
             return (
               <div key={entry.name} className="flex items-center justify-between gap-4">
@@ -30,20 +42,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                   <span className={`w-2.5 h-2.5 rounded-full ${gradColor}`} />
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-tight">{entry.name}</span>
                 </div>
-                <span className="text-xs font-black tabular-nums text-slate-800">{entry.value} pts</span>
+                <div className="text-right">
+                  <span className="text-xs font-black tabular-nums text-slate-800">{rawVal} pts</span>
+                  <span className="text-[10px] font-bold text-slate-400 tabular-nums ml-1.5">({entry.value}%)</span>
+                </div>
               </div>
             );
           })}
-          <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center text-xs font-black text-slate-800">
-            <span className="text-slate-400">TOTAL</span>
-            <span className="text-sm text-[#2b62e3] tabular-nums">{total} pts</span>
-          </div>
         </div>
       </div>
     );
   }
   return null;
 };
+
 
 export default function Dashboard() {
   const { calendar } = useCalendar();
@@ -140,6 +152,39 @@ export default function Dashboard() {
   const qualiChamp = [...standings].sort((a, b) => b.qualiPoints - a.qualiPoints)[0];
   const raceChamp = [...standings].sort((a, b) => b.racePoints - a.racePoints)[0];
   const betChamp = [...standings].sort((a, b) => b.betPoints - a.betPoints)[0];
+
+  // 100% stacked points data normalized per player
+  const chartData100 = standings.map(p => {
+    const q = p.qualiPoints || 0;
+    const r = p.racePoints || 0;
+    const b = p.betPoints || 0;
+    const sum = q + r + b;
+    if (sum === 0) {
+      return {
+        name: p.name,
+        rawTotal: 0,
+        rawQuali: 0,
+        rawRace: 0,
+        rawBet: 0,
+        qualiPercent: 0,
+        racePercent: 0,
+        betPercent: 0,
+      };
+    }
+    const qualiPercent = Number(((q / sum) * 100).toFixed(1));
+    const racePercent = Number(((r / sum) * 100).toFixed(1));
+    const betPercent = Number((100 - qualiPercent - racePercent).toFixed(1));
+    return {
+      name: p.name,
+      rawTotal: sum,
+      rawQuali: q,
+      rawRace: r,
+      rawBet: b,
+      qualiPercent,
+      racePercent,
+      betPercent,
+    };
+  });
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -411,15 +456,15 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* SESSION COMPARISON STACKED BAR CHART */}
-      <section className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm relative overflow-hidden">
+      {/* SESSION COMPARISON 100% STACKED BAR CHART */}
+      <section className="bg-white border border-slate-100 p-5 sm:p-6 rounded-3xl shadow-sm relative overflow-hidden">
         {/* Glow effect */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-10">
           <div>
             <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Analyse Comparative</h2>
-            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points (Barres Empilées)</p>
+            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points</p>
           </div>
           
           {/* Custom HTML Legend */}
@@ -439,9 +484,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="h-[220px] w-full relative z-10">
+        <div className="h-[210px] w-full relative z-10">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={chartData100} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="qualiGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6366f1" />
@@ -458,14 +503,21 @@ export default function Dashboard() {
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                domain={[0, 100]}
+                ticks={[0, 25, 50, 75, 100]}
+                tickFormatter={(v) => `${v}%`}
+                tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} 
+              />
               <Tooltip 
                 cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 8 }}
                 content={<CustomTooltip />}
               />
-              <Bar dataKey="qualiPoints" name="Qualifs" stackId="points" fill="url(#qualiGrad)" barSize={34} />
-              <Bar dataKey="racePoints" name="Course" stackId="points" fill="url(#raceGrad)" barSize={34} />
-              <Bar dataKey="betPoints" name="Paris" stackId="points" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
+              <Bar dataKey="qualiPercent" name="Qualifs" stackId="points100" fill="url(#qualiGrad)" barSize={34} />
+              <Bar dataKey="racePercent" name="Course" stackId="points100" fill="url(#raceGrad)" barSize={34} />
+              <Bar dataKey="betPercent" name="Paris" stackId="points100" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </div>
