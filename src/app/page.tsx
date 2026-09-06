@@ -189,9 +189,9 @@ export default function Dashboard() {
                 style={{ backgroundColor: getPlayerColor(p.name) }} 
               />
               
-              <div>
-                {/* Header: Rank + Name + Flair Profile Badge */}
-                <div className="flex items-start justify-between gap-2 mb-5">
+              <div className="space-y-5">
+                {/* 1. Header: Rank + Name + Flair Profile Badge */}
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-[11px] font-black text-slate-400 group-hover:text-slate-600 transition-colors uppercase">
@@ -210,86 +210,91 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {/* Score Total & Écart moyen */}
-                <div className="mb-5 flex items-baseline justify-between">
+                {/* 2. PRIORITÉ 1 : POINTS TOTAUX (Grand & Imposant) */}
+                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100 flex items-baseline justify-between">
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Points Totaux</span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-4xl font-black text-slate-900 tabular-nums tracking-tighter">
+                      <span className="text-5xl font-black text-slate-900 tabular-nums tracking-tighter">
                         {p.points || 0}
                       </span>
                       <span className="text-xs font-black text-slate-400 uppercase">pts</span>
                     </div>
                   </div>
-                  
                   <div className="text-right">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Écart moyen</span>
-                    <span className="text-lg font-black text-indigo-600 tabular-nums">
-                      ±{p.avgDistance || 0} <span className="text-[10px] font-bold text-slate-400">pl.</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Classement</span>
+                    <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-white border border-slate-200/80 text-slate-700 shadow-xs">
+                      {rankLabel} au général
                     </span>
                   </div>
                 </div>
 
-                {/* INDICE DE PROXIMITÉ & FLAIR */}
-                <div className="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-100 mb-5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                {/* 3. PRIORITÉ 2 : DÉTAIL DES POINTS (QUALIFS, COURSE, PARIS) */}
+                <div>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-2">Points par session</span>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {/* Qualifs */}
+                    <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/70 flex flex-col justify-between">
+                      <div className="flex items-center gap-1 text-[8px] font-black uppercase text-indigo-600 mb-1">
+                        <Timer className="w-3 h-3 text-indigo-500 shrink-0" />
+                        <span>Qualifs</span>
+                      </div>
+                      <div className="text-xl font-black text-indigo-950 tabular-nums">
+                        {p.qualiPoints || 0}
+                        <span className="text-[9px] font-bold text-indigo-500/70 ml-1">pts</span>
+                      </div>
+                    </div>
+
+                    {/* Course */}
+                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/70 flex flex-col justify-between">
+                      <div className="flex items-center gap-1 text-[8px] font-black uppercase text-blue-600 mb-1">
+                        <Flag className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span>Course</span>
+                      </div>
+                      <div className="text-xl font-black text-blue-950 tabular-nums">
+                        {p.racePoints || 0}
+                        <span className="text-[9px] font-bold text-blue-500/70 ml-1">pts</span>
+                      </div>
+                    </div>
+
+                    {/* Paris */}
+                    <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-100/70 flex flex-col justify-between">
+                      <div className="flex items-center gap-1 text-[8px] font-black uppercase text-amber-700 mb-1">
+                        <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>Paris</span>
+                      </div>
+                      <div className="text-xl font-black text-amber-950 tabular-nums">
+                        {p.betPoints || 0}
+                        <span className="text-[9px] font-bold text-amber-600/70 ml-1">pts</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. SYNTHÈSE FLAIR & PROXIMITÉ (Plus compacte) */}
+                <div className="p-3 bg-slate-50/60 rounded-xl border border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-[9px] font-black uppercase text-slate-500">
+                    <span className="flex items-center gap-1">
                       <Target className="w-3 h-3 text-indigo-500" />
-                      Précision de placement
+                      Proximité : ±{p.avgDistance || 0} pl.
                     </span>
-                    <span className="text-xs font-black text-indigo-600 tabular-nums">
-                      {p.proximityScore || 0}%
+                    <span className="text-indigo-600 font-bold">{p.proximityScore || 0}% flair</span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-[10px] font-bold">
+                    <span className="text-slate-700 flex items-center gap-1">
+                      <span>🎯</span> {p.exactCount || 0} dans le mille
                     </span>
-                  </div>
-                  
-                  {/* Gauge Bar */}
-                  <div className="w-full bg-slate-200/70 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-indigo-500 via-[#2b62e3] to-emerald-400 h-full rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(5, p.proximityScore || 0)}%` }}
-                    />
-                  </div>
-
-                  {/* Highlights : Dans le mille vs À ±1 place */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="bg-white px-2.5 py-1.5 rounded-xl border border-slate-100 shadow-xs flex items-center gap-2">
-                      <span className="text-xs">🎯</span>
-                      <div>
-                        <div className="text-[8px] font-black uppercase text-slate-400 leading-none">Dans le mille</div>
-                        <div className="text-xs font-black text-slate-900 tabular-nums">{p.exactCount || 0} <span className="text-[8px] text-slate-400">exacts</span></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-amber-50/70 px-2.5 py-1.5 rounded-xl border border-amber-200/50 shadow-xs flex items-center gap-2">
-                      <span className="text-xs">🤏</span>
-                      <div>
-                        <div className="text-[8px] font-black uppercase text-amber-700 leading-none">À ±1 place</div>
-                        <div className="text-xs font-black text-amber-900 tabular-nums">{p.nearMissCount || 0} <span className="text-[8px] text-amber-600 font-bold">si proche</span></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Session breakdown */}
-                <div className="grid grid-cols-3 gap-2 py-2.5 border-t border-slate-100 text-center">
-                  <div>
-                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Qualifs</div>
-                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.qualiPoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
-                  </div>
-                  <div className="border-x border-slate-100">
-                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Course</div>
-                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.racePoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
-                  </div>
-                  <div>
-                    <div className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Paris</div>
-                    <div className="text-xs font-black text-slate-800 tabular-nums">{p.betPoints || 0} <span className="text-[8px] text-slate-400">pts</span></div>
+                    <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1 font-black text-[9px]">
+                      <span>🤏</span> {p.nearMissCount || 0} à ±1 place
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Call to action footer */}
               <div className="mt-4 pt-3 border-t border-slate-100/70 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-[#2b62e3] group-hover:text-[#1d4ed8]">
-                <span>Analyse détaillée du flair</span>
+                <span>Voir l'analyse détaillée</span>
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </button>
