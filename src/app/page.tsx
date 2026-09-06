@@ -411,61 +411,61 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* SESSION COMPARISON BAR CHART */}
-      <section className="bg-white border border-slate-100 p-8 rounded-3xl shadow-sm relative overflow-hidden">
+      {/* SESSION COMPARISON STACKED BAR CHART */}
+      <section className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm relative overflow-hidden">
         {/* Glow effect */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 relative z-10">
           <div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Analyse</h2>
-            <p className="text-xl font-black text-slate-900 uppercase tracking-tight">Répartition des Points par Session</p>
+            <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Analyse Comparative</h2>
+            <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Répartition des Points (Barres Empilées)</p>
           </div>
           
           {/* Custom HTML Legend */}
-          <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
-              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm shadow-indigo-200" />
+          <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-xs" />
               <span>Qualifs</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
-              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm shadow-blue-200" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 shadow-xs" />
               <span>Course</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all duration-200 cursor-default">
-              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 shadow-sm shadow-amber-200" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg cursor-default">
+              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 shadow-xs" />
               <span>Paris</span>
             </div>
           </div>
         </div>
 
-        <div className="h-[350px] w-full relative z-10">
+        <div className="h-[220px] w-full relative z-10">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
+            <BarChart data={standings} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="qualiGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="#818cf8" />
                 </linearGradient>
                 <linearGradient id="raceGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#06b6d4" />
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="100%" stopColor="#38bdf8" />
                 </linearGradient>
                 <linearGradient id="betGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#f59e0b" />
-                  <stop offset="100%" stopColor="#eab308" />
+                  <stop offset="100%" stopColor="#fbbf24" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 }} />
               <Tooltip 
-                cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 12 }}
+                cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 8 }}
                 content={<CustomTooltip />}
               />
-              <Bar dataKey="qualiPoints" name="Qualifs" fill="url(#qualiGrad)" radius={[6, 6, 0, 0]} barSize={20} />
-              <Bar dataKey="racePoints" name="Course" fill="url(#raceGrad)" radius={[6, 6, 0, 0]} barSize={20} />
-              <Bar dataKey="betPoints" name="Paris" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={20} />
+              <Bar dataKey="qualiPoints" name="Qualifs" stackId="points" fill="url(#qualiGrad)" barSize={34} />
+              <Bar dataKey="racePoints" name="Course" stackId="points" fill="url(#raceGrad)" barSize={34} />
+              <Bar dataKey="betPoints" name="Paris" stackId="points" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </div>
