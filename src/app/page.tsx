@@ -7,7 +7,7 @@ import { useCalendar } from "@/hooks/useCalendar";
 import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS, DetailedStanding, PlayerDetailedStats, isFemale } from "@/lib/storage";
 import ResultsEntry from "@/components/ResultsEntry";
 import CalendarManager from "@/components/CalendarManager";
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend, Rectangle, type BarShapeProps } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
 const AVAILABLE_EMOJIS = [
@@ -16,6 +16,14 @@ const AVAILABLE_EMOJIS = [
   { emoji: "🤡", label: "Farfelu" },
   { emoji: "🎯", label: "Sniper" },
 ];
+
+// Arrondit le haut du segment le plus haut de chaque barre empilée (sans pari gagné, c'est Course)
+type StackSegment = "qualiPercent" | "racePercent" | "betPercent";
+const renderStackSegment = (segment: StackSegment) => (props: BarShapeProps) => {
+  const d = props.payload;
+  const top: StackSegment = d.betPercent > 0 ? "betPercent" : d.racePercent > 0 ? "racePercent" : "qualiPercent";
+  return <Rectangle {...props} radius={top === segment ? [6, 6, 0, 0] : 0} />;
+};
 
 // Custom Tooltip component for the Championship Line Chart
 const CustomLineTooltip = ({ active, payload, label }: any) => {
@@ -307,7 +315,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-12 text-slate-900 bg-white pb-24 max-w-6xl mx-auto px-4 sm:px-6">
       {/* Header SOFT FLAT */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-12 border-b border-slate-50 pb-8">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4 sm:pt-12 border-b border-slate-50 pb-8">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter text-slate-900 mb-2">Résultats</h1>
           <div className="flex items-center gap-2">
@@ -527,11 +535,11 @@ export default function Dashboard() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white">
-                <th className="sticky left-0 z-30 p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 min-w-[120px] bg-white">Joueur</th>
+                <th className="sticky left-0 z-30 px-3 py-4 sm:p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 sm:min-w-[120px] bg-white">Joueur</th>
                 {seasonProgress?.rounds.map(r => {
                   const name = calendar.find(c => c.round === r)?.name;
                   return (
-                    <th key={`head-${r}`} className="relative h-24 min-w-[45px] p-0 border-b border-slate-50 bg-white">
+                    <th key={`head-${r}`} className="relative h-24 min-w-[34px] sm:min-w-[45px] p-0 border-b border-slate-50 bg-white">
                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center">
                         <span className="whitespace-nowrap -rotate-45 origin-center text-[8px] font-black text-slate-300 uppercase tracking-wider">
                           {name}
@@ -540,14 +548,14 @@ export default function Dashboard() {
                     </th>
                   );
                 })}
-                <th className="sticky right-0 z-30 px-3 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 text-center bg-white min-w-[70px]">Total</th>
+                <th className="sticky right-0 z-30 px-3 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 text-center bg-white min-w-[52px] sm:min-w-[70px]">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {seasonProgress?.players.map((p, pIdx) => (
                 <tr key={`row-${p.name}`} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="sticky left-0 z-20 p-4 text-[11px] font-black text-slate-900 bg-white group-hover:bg-slate-50/50 transition-colors">
-                    <div className="flex items-center gap-3">
+                  <td className="sticky left-0 z-20 px-3 py-4 sm:p-4 text-[11px] font-black text-slate-900 bg-white group-hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(p.name) }} />
                       <span className="truncate uppercase">{p.name}</span>
                     </div>
@@ -557,7 +565,7 @@ export default function Dashboard() {
                       {s || "—"}
                     </td>
                   ))}
-                  <td className="sticky right-0 z-20 px-3 py-4 text-center text-xs font-black text-white bg-[#2b62e3] tabular-nums group-hover:bg-[#1d4ed8] transition-colors">
+                  <td className="sticky right-0 z-20 px-2 sm:px-3 py-4 text-center text-xs font-black text-white bg-[#2b62e3] tabular-nums group-hover:bg-[#1d4ed8] transition-colors">
                     {p.cumulative[p.cumulative.length - 1]}
                   </td>
                 </tr>
@@ -680,9 +688,9 @@ export default function Dashboard() {
                     cursor={{ fill: 'rgba(241, 245, 249, 0.4)', radius: 8 }}
                     content={<CustomTooltip />}
                   />
-                  <Bar dataKey="qualiPercent" name="Qualifs" stackId="points100" fill="url(#qualiGrad)" barSize={34} />
-                  <Bar dataKey="racePercent" name="Course" stackId="points100" fill="url(#raceGrad)" barSize={34} />
-                  <Bar dataKey="betPercent" name="Paris" stackId="points100" fill="url(#betGrad)" radius={[6, 6, 0, 0]} barSize={34} />
+                  <Bar dataKey="qualiPercent" name="Qualifs" stackId="points100" fill="url(#qualiGrad)" shape={renderStackSegment("qualiPercent")} barSize={34} />
+                  <Bar dataKey="racePercent" name="Course" stackId="points100" fill="url(#raceGrad)" shape={renderStackSegment("racePercent")} barSize={34} />
+                  <Bar dataKey="betPercent" name="Paris" stackId="points100" fill="url(#betGrad)" shape={renderStackSegment("betPercent")} barSize={34} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -692,27 +700,27 @@ export default function Dashboard() {
 
       {/* GP History Viewer & Admin */}
       <section className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-        <div className="bg-slate-50/50 p-6 flex items-center justify-between border-b border-slate-50">
-          <div className="flex items-center gap-4">
+        <div className="bg-slate-50/50 p-4 sm:p-6 flex items-center justify-between gap-2 border-b border-slate-50">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button 
               onClick={() => setViewerRound(r => Math.max(1, r - 1))}
-              className="p-2 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
+              className="p-2.5 sm:p-2 shrink-0 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-center min-w-[140px]">
+            <div className="text-center min-w-[96px] sm:min-w-[140px]">
               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Historique</div>
               <div className="text-xs font-black text-slate-900 uppercase">{calendar.find(r => r.round === viewerRound)?.name}</div>
             </div>
             <button 
               onClick={() => setViewerRound(r => Math.min(22, r + 1))}
-              className="p-2 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
+              className="p-2.5 sm:p-2 shrink-0 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           {!viewerResult && (
-            <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[8px] font-black uppercase tracking-widest rounded-full border border-amber-100">En attente</span>
+            <span className="shrink-0 whitespace-nowrap px-3 py-1 bg-amber-50 text-amber-600 text-[8px] font-black uppercase tracking-widest rounded-full border border-amber-100">En attente</span>
           )}
         </div>
         
@@ -835,7 +843,7 @@ export default function Dashboard() {
                       key={`react-user-${p}`}
                       type="button"
                       onClick={() => changeActivePlayer(p)}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                      className={`px-2 py-1.5 sm:py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
                         activePlayer === p 
                           ? 'bg-slate-900 text-white shadow-xs' 
                           : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
@@ -881,7 +889,7 @@ export default function Dashboard() {
                           type="button"
                           onClick={() => handleReaction(name, emoji)}
                           title={voters.length > 0 ? `${label} • Réagi par : ${voters.join(', ')}` : `${label} • Cliquez pour réagir`}
-                          className={`group/btn relative flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all active:scale-95 ${
+                          className={`group/btn relative flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-lg text-xs transition-all active:scale-95 ${
                             hasVoted
                               ? 'bg-amber-50 border border-amber-300 text-amber-900 shadow-xs ring-1 ring-amber-200'
                               : count > 0

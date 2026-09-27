@@ -203,7 +203,7 @@ export default function Pronostics() {
               <select 
                 value={selectedRound}
                 onChange={(e) => setSelectedRound(parseInt(e.target.value))}
-                className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 text-xs font-black uppercase tracking-widest text-slate-900 outline-none appearance-none focus:border-slate-400 transition-colors"
+                className="w-full h-12 bg-white border border-slate-200 rounded-xl pl-4 pr-10 text-xs font-black uppercase tracking-wider sm:tracking-widest text-slate-900 outline-none appearance-none focus:border-slate-400 transition-colors"
               >
                 {calendar.map(r => (
                   <option key={r.round} value={r.round}>
@@ -219,7 +219,7 @@ export default function Pronostics() {
       </header>
 
       {/* COUNTDOWN SECTION - DYNAMIC & LOCKING */}
-      <div className={`border rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl transition-all ${
+      <div className={`border rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 shadow-xl transition-all ${
         isRaceLocked 
           ? 'bg-rose-50 border-rose-100 shadow-rose-50' 
           : isQualiLocked 
@@ -314,35 +314,35 @@ export default function Pronostics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         {/* QUALIFICATIONS */}
         <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isQualiLocked ? 'opacity-70' : 'opacity-100'}`}>
-          <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+          <div className="bg-slate-50/50 border-b border-slate-100 px-4 sm:px-6 py-4 flex items-center justify-between">
             <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Qualifs</h2>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
           </div>
-          <div className="p-6 space-y-3">
+          <div className="p-3 sm:p-6 space-y-3">
             {positions.map((index) => (
-              <div key={`quali-${index}`} className="flex items-center gap-2.5 relative">
+              <div key={`quali-${index}`} className="flex items-center gap-1.5 sm:gap-2.5 relative">
                 <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50 shrink-0">
                   {index + 1}
                 </div>
                 {/* Swap controls */}
-                <div className="flex flex-col gap-0.5 shrink-0">
+                <div className="flex sm:flex-col sm:gap-0.5 shrink-0">
                   <button
                     type="button"
                     disabled={index === 0 || isQualiLocked}
                     onClick={() => moveQualiPosition(index, -1)}
-                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    className="w-9 h-11 sm:w-5 sm:h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
                     title="Monter d'une place"
                   >
-                    <ChevronUp className="w-3.5 h-3.5" />
+                    <ChevronUp className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                   </button>
                   <button
                     type="button"
                     disabled={index === 9 || isQualiLocked}
                     onClick={() => moveQualiPosition(index, 1)}
-                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    className="w-9 h-11 sm:w-5 sm:h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
                     title="Descendre d'une place"
                   >
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                   </button>
                 </div>
                 <div className="flex-1 relative">
@@ -350,7 +350,7 @@ export default function Pronostics() {
                     value={qualiSelections[index]}
                     disabled={isQualiLocked}
                     onChange={(e) => handleQualiChange(index, e.target.value)}
-                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isQualiLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
+                    className={`w-full bg-white border border-slate-200 h-11 pl-3 sm:pl-4 pr-10 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isQualiLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
                   >
                     <option value="">Pilote...</option>
                     {teams2026.map((team) => (
@@ -366,7 +366,7 @@ export default function Pronostics() {
                   {qualiSelections[index] && !isQualiLocked && (
                     <button 
                       onClick={() => handleQualiChange(index, "")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
+                      className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-6 sm:h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
                     >
                       ×
                     </button>
@@ -379,7 +379,7 @@ export default function Pronostics() {
 
         {/* COURSE */}
         <section className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity ${isRaceLocked ? 'opacity-70' : 'opacity-100'}`}>
-          <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+          <div className="bg-slate-50/50 border-b border-slate-100 px-4 sm:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Course</h2>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Top 10</span>
@@ -395,31 +395,31 @@ export default function Pronostics() {
               </button>
             )}
           </div>
-          <div className="p-6 space-y-3">
+          <div className="p-3 sm:p-6 space-y-3">
             {positions.map((index) => (
-              <div key={`race-${index}`} className="flex items-center gap-2.5 relative">
+              <div key={`race-${index}`} className="flex items-center gap-1.5 sm:gap-2.5 relative">
                 <div className="w-7 h-7 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 rounded-md bg-slate-50 shrink-0">
                   {index + 1}
                 </div>
                 {/* Swap controls */}
-                <div className="flex flex-col gap-0.5 shrink-0">
+                <div className="flex sm:flex-col sm:gap-0.5 shrink-0">
                   <button
                     type="button"
                     disabled={index === 0 || isRaceLocked}
                     onClick={() => moveRacePosition(index, -1)}
-                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    className="w-9 h-11 sm:w-5 sm:h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
                     title="Monter d'une place"
                   >
-                    <ChevronUp className="w-3.5 h-3.5" />
+                    <ChevronUp className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                   </button>
                   <button
                     type="button"
                     disabled={index === 9 || isRaceLocked}
                     onClick={() => moveRacePosition(index, 1)}
-                    className="w-5 h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                    className="w-9 h-11 sm:w-5 sm:h-3.5 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 disabled:pointer-events-none transition-colors"
                     title="Descendre d'une place"
                   >
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                   </button>
                 </div>
                 <div className="flex-1 relative">
@@ -427,7 +427,7 @@ export default function Pronostics() {
                     value={raceSelections[index]}
                     disabled={isRaceLocked}
                     onChange={(e) => handleRaceChange(index, e.target.value)}
-                    className={`w-full bg-white border border-slate-200 h-11 px-4 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isRaceLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
+                    className={`w-full bg-white border border-slate-200 h-11 pl-3 sm:pl-4 pr-10 text-xs font-bold text-slate-700 rounded-xl outline-none appearance-none transition-all ${isRaceLocked ? 'cursor-not-allowed bg-slate-50' : 'focus:border-slate-400 cursor-pointer'}`}
                   >
                     <option value="">Pilote...</option>
                     {teams2026.map((team) => (
@@ -443,7 +443,7 @@ export default function Pronostics() {
                   {raceSelections[index] && !isRaceLocked && (
                     <button 
                       onClick={() => handleRaceChange(index, "")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
+                      className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-6 sm:h-6 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors text-lg"
                     >
                       ×
                     </button>
@@ -460,12 +460,12 @@ export default function Pronostics() {
         <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4">
           <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Pari Spécial</h2>
         </div>
-        <div className="p-8 space-y-4">
+        <div className="p-4 sm:p-8 space-y-4">
           <textarea 
             value={specialBet}
             disabled={isRaceLocked}
             onChange={(e) => setSpecialBet(e.target.value)}
-            className={`w-full bg-slate-50 border border-slate-100 rounded-2xl p-6 min-h-[140px] text-xs font-bold text-slate-600 outline-none resize-none transition-all placeholder:text-slate-300 ${isRaceLocked ? 'cursor-not-allowed' : 'focus:bg-white focus:border-slate-300'}`}
+            className={`w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 sm:p-6 min-h-[140px] text-xs font-bold text-slate-600 outline-none resize-none transition-all placeholder:text-slate-300 ${isRaceLocked ? 'cursor-not-allowed' : 'focus:bg-white focus:border-slate-300'}`}
             placeholder="Intuition, abandon, pluie..."
           />
         </div>
