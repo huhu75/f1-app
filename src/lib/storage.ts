@@ -1,4 +1,5 @@
 import { fetchCalendar } from "./f1-data";
+import { PLAYERS, isFemale } from "./players";
 import { supabase } from "./supabase";
 
 /**
@@ -33,20 +34,6 @@ export interface RaceResult {
   qualiPositions: string[];
   racePositions: string[];
 }
-
-export interface DashboardInsights {
-  bestPredictedDrivers: { name: string; count: number }[];
-  averageCorrectPerGP: number;
-  qualiAccuracy: number;
-  raceAccuracy: number;
-}
-
-export const PLAYERS = ["Hugo", "François", "Carole"];
-
-export const isFemale = (name: string): boolean => {
-  const n = (name || "").trim().toLowerCase();
-  return n === "carole" || n === "caroline" || n === "marie" || n === "sophie" || n === "claire" || n === "camille" || n === "lucie";
-};
 
 export interface PlayerFlairProfile {
   title: string;
@@ -491,55 +478,6 @@ export const storageService = {
         profile
       };
     });
-  },
-
-  async getInsights(): Promise<DashboardInsights> {
-    const allPredictions = await this.getAllPredictions();
-    const allResults = await this.getRaceResults();
-    
-    const driverStats: Record<string, number> = {};
-    let totalCorrectQuali = 0;
-    let totalCorrectRace = 0;
-    let totalPositionsPredicted = 0;
-    let roundsWithResults = 0;
-
-    Object.entries(allResults).forEach(([roundStr, result]) => {
-      const round = parseInt(roundStr);
-      const preds = allPredictions[round];
-      if (!preds || Object.keys(preds).length === 0) return;
-      
-      roundsWithResults++;
-
-      Object.values(preds).forEach(pred => {
-        pred.qualiPositions.forEach((driver, idx) => {
-          totalPositionsPredicted++;
-          if (driver && result.qualiPositions && driver === result.qualiPositions[idx]) {
-            totalCorrectQuali++;
-            driverStats[driver] = (driverStats[driver] || 0) + 1;
-          }
-        });
-        pred.racePositions.forEach((driver, idx) => {
-          if (driver && result.racePositions && driver === result.racePositions[idx]) {
-            totalCorrectRace++;
-            driverStats[driver] = (driverStats[driver] || 0) + 1;
-          }
-        });
-      });
-    });
-
-    const bestDrivers = Object.entries(driverStats)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    const totalCorrect = totalCorrectQuali + totalCorrectRace;
-    
-    return {
-      bestPredictedDrivers: bestDrivers,
-      averageCorrectPerGP: roundsWithResults ? totalCorrect / roundsWithResults : 0,
-      qualiAccuracy: totalPositionsPredicted ? (totalCorrectQuali / totalPositionsPredicted) * 100 : 0,
-      raceAccuracy: totalPositionsPredicted ? (totalCorrectRace / totalPositionsPredicted) * 100 : 0,
-    };
   },
 
   async getSeasonProgress(): Promise<{

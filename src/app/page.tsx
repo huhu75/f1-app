@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Calendar, Flag, TrendingUp, Info, BarChart3, Target, Zap, ChevronRight, ChevronLeft, Award, Loader2, Gauge, Timer, MessageSquare } from "lucide-react";
-import { getNextRaceFromList, formatCountdown } from "@/lib/f1-data";
+import { Trophy, Flag, Info, Target, Zap, ChevronRight, ChevronLeft, Loader2, Gauge, Timer, MessageSquare } from "lucide-react";
+import { getNextRaceFromList } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
-import { storageService, Prediction, DashboardInsights, RaceResult, PLAYERS, DetailedStanding, PlayerDetailedStats, isFemale } from "@/lib/storage";
+import { storageService, Prediction, RaceResult, DetailedStanding, PlayerDetailedStats } from "@/lib/storage";
+import { PLAYERS, DEFAULT_PLAYER, getPlayerColor, isFemale } from "@/lib/players";
 import ResultsEntry from "@/components/ResultsEntry";
 import CalendarManager from "@/components/CalendarManager";
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend, Rectangle, type BarShapeProps } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Rectangle, type BarShapeProps } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 
 const AVAILABLE_EMOJIS = [
@@ -103,26 +104,28 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Dashboard() {
   const { calendar } = useCalendar();
   const [standings, setStandings] = useState<DetailedStanding[]>([]);
-  const [nextRace, setNextRace] = useState<any>(null);
-  const [countdown, setCountdown] = useState<string>("");
-  const [userPredictions, setUserPredictions] = useState<Prediction | null>(null);
-  const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [seasonProgress, setSeasonProgress] = useState<{
     rounds: number[];
     players: { name: string; scores: number[]; cumulative: number[] }[];
   } | null>(null);
+  const [allPredictions, setAllPredictions] = useState<Record<number, Record<string, Prediction>>>({});
+  const [allResults, setAllResults] = useState<Record<number, RaceResult>>({});
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [viewerRound, setViewerRound] = useState(1);
-  const [viewerPredictions, setViewerPredictions] = useState<Record<string, Prediction>>({});
-  const [viewerResult, setViewerResult] = useState<RaceResult | null>(null);
+
+  // GP affiché dans l'historique : par défaut le prochain GP, jusqu'à ce que l'utilisateur navigue
+  const [pickedViewerRound, setPickedViewerRound] = useState<number | null>(null);
+  const viewerRound = pickedViewerRound ?? getNextRaceFromList(calendar)?.round ?? 1;
+  const firstRound = calendar[0]?.round ?? 1;
+  const lastRound = calendar[calendar.length - 1]?.round ?? 1;
+  const viewerPredictions = allPredictions[viewerRound] ?? {};
+  const viewerResult = allResults[viewerRound] ?? null;
 
   // Player Detail Modal State
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
-  const [playerStats, setPlayerStats] = useState<any>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerDetailedStats | null>(null);
 
   // Active user for emoji reactions (stored in localStorage)
-  const [activePlayer, setActivePlayer] = useState<string>("Hugo");
+  const [activePlayer, setActivePlayer] = useState<string>(DEFAULT_PLAYER);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -140,7 +143,19 @@ export default function Dashboard() {
     }
   };
 
+  const setReactions = (round: number, targetPlayer: string, reactions: Record<string, string[]>) => {
+    setAllPredictions(prev => {
+      const roundPreds = prev[round];
+      if (!roundPreds?.[targetPlayer]) return prev;
+      return {
+        ...prev,
+        [round]: { ...roundPreds, [targetPlayer]: { ...roundPreds[targetPlayer], reactions } },
+      };
+    });
+  };
+
   const handleReaction = async (targetPlayer: string, emoji: string) => {
+    const round = viewerRound;
     const currentPred = viewerPredictions[targetPlayer];
     if (!currentPred) return;
 
@@ -159,37 +174,27 @@ export default function Dashboard() {
     }
 
     // Optimistic UI update
-    setViewerPredictions(prev => ({
-      ...prev,
-      [targetPlayer]: {
-        ...prev[targetPlayer],
-        reactions: currentReactions
-      }
-    }));
+    setReactions(round, targetPlayer, currentReactions);
 
     // Server update
-    const updated = await storageService.toggleBetReaction(viewerRound, targetPlayer, emoji, activePlayer);
-    setViewerPredictions(prev => ({
-      ...prev,
-      [targetPlayer]: {
-        ...prev[targetPlayer],
-        reactions: updated
-      }
-    }));
+    const updated = await storageService.toggleBetReaction(round, targetPlayer, emoji, activePlayer);
+    setReactions(round, targetPlayer, updated);
   };
 
+  // Charge (ou recharge en arrière-plan) toutes les données du tableau de bord.
+  // Le loader plein écran n'apparaît qu'au premier chargement : un rafraîchissement
+  // (après saisie des résultats ou du calendrier) ne démonte pas la page.
   const loadAllData = async () => {
-    setIsLoading(true);
-    const [leaderboard, stats, allPreds, allResults, progress] = await Promise.all([
-      storageService.getLeaderboard() as Promise<DetailedStanding[]>,
-      storageService.getInsights(),
+    const [leaderboard, preds, results, progress] = await Promise.all([
+      storageService.getLeaderboard(),
       storageService.getAllPredictions(),
       storageService.getRaceResults(),
       storageService.getSeasonProgress()
     ]);
 
     setStandings(leaderboard);
-    setInsights(stats);
+    setAllPredictions(preds);
+    setAllResults(results);
     setSeasonProgress(progress);
     setIsLoading(false);
   };
@@ -197,35 +202,6 @@ export default function Dashboard() {
   useEffect(() => {
     loadAllData();
   }, []);
-
-  useEffect(() => {
-    if (calendar.length > 0) {
-      const nextR = getNextRaceFromList(calendar);
-      if (nextR) {
-        setNextRace(nextR);
-        setViewerRound(nextR.round);
-        setCountdown(formatCountdown(nextR.qualiDate));
-      }
-    }
-  }, [calendar]);
-
-  useEffect(() => {
-    if (!nextRace) return;
-    const interval = setInterval(() => {
-      setCountdown(formatCountdown(nextRace.qualiDate));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [nextRace]);
-
-  useEffect(() => {
-    const updateViewer = async () => {
-      const allPreds = await storageService.getAllPredictions();
-      const allResults = await storageService.getRaceResults();
-      setViewerPredictions(allPreds[viewerRound] || {});
-      setViewerResult(allResults[viewerRound] || null);
-    };
-    updateViewer();
-  }, [viewerRound]);
 
   useEffect(() => {
     if (selectedPlayerName) {
@@ -238,15 +214,6 @@ export default function Dashboard() {
       setPlayerStats(null);
     }
   }, [selectedPlayerName]);
-
-  const getPlayerColor = (name: string) => {
-    const colors: Record<string, string> = {
-      "Hugo": "#334155",      // Slate
-      "François": "#10b981",  // Emerald
-      "Carole": "#fb7185"     // Sunset Rose
-    };
-    return colors[name] || "#2b62e3";
-  };
 
   // Winners by session
   const qualiChamp = [...standings].sort((a, b) => b.qualiPoints - a.qualiPoints)[0];
@@ -552,7 +519,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {seasonProgress?.players.map((p, pIdx) => (
+              {seasonProgress?.players.map((p) => (
                 <tr key={`row-${p.name}`} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="sticky left-0 z-20 px-3 py-4 sm:p-4 text-[11px] font-black text-slate-900 bg-white group-hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -703,7 +670,7 @@ export default function Dashboard() {
         <div className="bg-slate-50/50 p-4 sm:p-6 flex items-center justify-between gap-2 border-b border-slate-50">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button 
-              onClick={() => setViewerRound(r => Math.max(1, r - 1))}
+              onClick={() => setPickedViewerRound(Math.max(firstRound, viewerRound - 1))}
               className="p-2.5 sm:p-2 shrink-0 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -713,7 +680,7 @@ export default function Dashboard() {
               <div className="text-xs font-black text-slate-900 uppercase">{calendar.find(r => r.round === viewerRound)?.name}</div>
             </div>
             <button 
-              onClick={() => setViewerRound(r => Math.min(22, r + 1))}
+              onClick={() => setPickedViewerRound(Math.min(lastRound, viewerRound + 1))}
               className="p-2.5 sm:p-2 shrink-0 hover:bg-white rounded-lg border border-slate-200 transition-all text-slate-400 hover:text-slate-900"
             >
               <ChevronRight className="w-4 h-4" />

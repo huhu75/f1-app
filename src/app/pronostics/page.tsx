@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, AlertCircle, Check, Loader2, Trophy, Zap, Flag, MessageSquare, History, ChevronRight, ChevronUp, ChevronDown, Calendar, Lock } from "lucide-react";
-import { teams2026, getNextRace, formatCountdown, getNextRaceFromList } from "@/lib/f1-data";
+import { Check, Loader2, Zap, History, ChevronRight, ChevronUp, ChevronDown, Lock } from "lucide-react";
+import { teams2026, formatCountdown, getNextRaceFromList } from "@/lib/f1-data";
 import { useCalendar } from "@/hooks/useCalendar";
 import CalendarManager from "@/components/CalendarManager";
-import { storageService, PLAYERS } from "@/lib/storage";
+import { storageService } from "@/lib/storage";
+import { PLAYERS, DEFAULT_PLAYER } from "@/lib/players";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Pronostics() {
@@ -16,7 +17,7 @@ export default function Pronostics() {
   const [raceSelections, setRaceSelections] = useState<string[]>(Array(10).fill(""));
   
   const [selectedRound, setSelectedRound] = useState<number>(1);
-  const [currentPlayer, setCurrentPlayer] = useState<string>("Hugo");
+  const [currentPlayer, setCurrentPlayer] = useState<string>(DEFAULT_PLAYER);
   const [predictionHistory, setPredictionHistory] = useState<any[]>([]);
   const [editCount, setEditCount] = useState<number>(0);
   const [showHistory, setShowHistory] = useState(false);
@@ -36,9 +37,6 @@ export default function Pronostics() {
   useEffect(() => {
     if (calendar.length > 0) {
       const nextR = getNextRaceFromList(calendar) ?? calendar[0];
-      setSelectedRound(nextR.round);
-    } else {
-      const nextR = getNextRace();
       setSelectedRound(nextR.round);
     }
   }, [calendar]);
@@ -142,15 +140,6 @@ export default function Pronostics() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const getPlayerColor = (name: string) => {
-    const colors: Record<string, string> = {
-      "Hugo": "#334155",      // Slate
-      "François": "#10b981",  // Emerald
-      "Carole": "#fb7185"     // Sunset Rose
-    };
-    return colors[name] || "#2b62e3";
   };
 
   if (calendarLoading || !selectedRace) return (
