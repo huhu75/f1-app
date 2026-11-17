@@ -61,21 +61,6 @@ export function getNextRaceFromList(calendar: Race[]): Race | undefined {
   return calendar.find((r) => r.startDate > now) ?? calendar[calendar.length - 1];
 }
 
-/**
- * Version synchrone conservée pour les composants qui l'utilisent encore.
- * Utilise un fallback statique ; à remplacer progressivement par getNextRaceFromList.
- */
-export function getNextRace() {
-  const fallback = [
-    { round: 5,  name: "Canada",      startDate: new Date("2026-05-23T20:00:00Z"), qualiDate: new Date("2026-05-22T22:00:00Z"), date_string: "22-24 MAI", race_start: "2026-05-23T20:00:00Z", quali_start: "2026-05-22T22:00:00Z" },
-    { round: 6,  name: "Monaco",      startDate: new Date("2026-06-06T14:00:00Z"), qualiDate: new Date("2026-06-05T14:00:00Z"), date_string: "05-07 JUN", race_start: "2026-06-06T14:00:00Z", quali_start: "2026-06-05T14:00:00Z" },
-    { round: 7,  name: "Barcelone",   startDate: new Date("2026-06-13T14:00:00Z"), qualiDate: new Date("2026-06-12T14:00:00Z"), date_string: "12-14 JUN", race_start: "2026-06-13T14:00:00Z", quali_start: "2026-06-12T14:00:00Z" },
-    { round: 22, name: "Abou Dhabi",  startDate: new Date("2026-12-05T14:00:00Z"), qualiDate: new Date("2026-12-04T14:00:00Z"), date_string: "04-06 DÉC", race_start: "2026-12-05T14:00:00Z", quali_start: "2026-12-04T14:00:00Z" },
-  ] as Race[];
-  const now = new Date();
-  return fallback.find((r) => r.startDate > now) ?? fallback[fallback.length - 1];
-}
-
 export function formatCountdown(targetDate: Date): string {
   const now = new Date();
   const diff = targetDate.getTime() - now.getTime();

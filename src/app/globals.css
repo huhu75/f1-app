@@ -3,17 +3,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-racing-red: #e10600;
-  --color-zinc-950: #09090b;
-  --color-zinc-900: #18181b;
-  --color-zinc-800: #27272a;
 }
 
 :root {
   --background: #ffffff;
   --foreground: #000000;
-  --racing-red: #e10600;
-  --punchy-blue: #2b62e3;
 }
 
 body {
@@ -30,19 +24,6 @@ body {
   textarea {
     font-size: 16px;
   }
-}
-
-/* Minimalist Card */
-.card-minimal {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-
-/* Subtle Tab Active State */
-.tab-active {
-  color: white;
-  border-bottom: 2px solid var(--racing-red);
 }
 
 /* Custom Scrollbar for sleek look */

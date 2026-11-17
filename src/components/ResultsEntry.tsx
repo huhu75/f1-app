@@ -88,8 +88,6 @@ export default function ResultsEntry({ onSaved }: { onSaved: () => void }) {
     }));
   };
 
-  const drivers = teams2026.flatMap(t => t.drivers).sort();
-
   return (
     <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm transition-all duration-300">
       <button 

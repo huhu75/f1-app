@@ -2,7 +2,7 @@
 
 Une application minimaliste et dynamique pour gérer les pronostics de Formule 1 entre amis (Saison 2026). 
 
-L'application permet à chaque joueur de saisir ses pronostics (Top 10 Qualifs, Top 10 Course, et un pari spécial) pour chaque Grand Prix. Les données sont synchronisées en temps réel entre tous les utilisateurs, et un tableau de bord analytique permet de comparer les performances des joueurs par session (Expert Qualifs, Maître de la Course, etc.).
+L'application permet à chaque joueur de saisir ses pronostics (Top 10 Qualifs, Top 10 Course, et un pari spécial) pour chaque Grand Prix. Les données sont partagées entre tous les joueurs via Supabase, et un tableau de bord analytique permet de comparer les performances des joueurs par session (Expert Qualifs, Maître de la Course, etc.).
 
 ## 🛠️ Technologies Utilisées
 
@@ -17,38 +17,10 @@ L'application permet à chaque joueur de saisir ses pronostics (Top 10 Qualifs, 
    ```
 
 2. **Configuration Supabase (Obligatoire)** :
-   L'application nécessite une base de données Supabase pour sauvegarder les pronostics. Créez un projet sur [Supabase](https://supabase.com/) et exécutez le script SQL suivant dans l'onglet **SQL Editor** :
+   L'application nécessite une base de données Supabase pour sauvegarder les pronostics. Créez un projet sur [Supabase](https://supabase.com/), puis exécutez le contenu de [`supabase_schema.sql`](supabase_schema.sql) dans l'onglet **SQL Editor**. Il crée les trois tables (`predictions`, `race_results`, `races`) et leurs règles d'accès.
 
-   ```sql
-   -- Table des pronostics
-   create table if not exists predictions (
-     id uuid default gen_random_uuid() primary key,
-     round integer not null,
-     player_name text not null,
-     quali_positions jsonb not null,
-     race_positions jsonb not null,
-     special_bet text,
-     bet_won boolean,
-     updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-     edit_count integer default 0,
-     history jsonb default '[]'::jsonb,
-     unique(round, player_name)
-   );
-
-   -- Table des résultats officiels
-   create table if not exists race_results (
-     round integer primary key,
-     quali_positions jsonb not null,
-     race_positions jsonb not null,
-     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-   );
-
-   -- Activer Row Level Security (RLS) en mode public pour simplifier l'accès
-   alter table predictions enable row level security;
-   alter table race_results enable row level security;
-   create policy "Public access for predictions" on predictions for all using (true) with check (true);
-   create policy "Public access for results" on race_results for all using (true) with check (true);
-   ```
+   - Base existante créée avant l'ajout des réactions émojis : lancez la migration indiquée en commentaire dans le script (`alter table predictions add column if not exists reactions ...`).
+   - La table `races` (calendrier) doit être remplie avec les Grands Prix de la saison (`round`, `name`, `date_string`, `race_start`, `quali_start`). Les horaires peuvent ensuite être ajustés depuis l'app via le bouton **Mettre à jour**.
 
 3. **Variables d'Environnement** :
    Créez un fichier `.env.local` à la racine du projet. Copiez vos identifiants Supabase (trouvables dans *Project Settings > API*) :
@@ -63,3 +35,17 @@ L'application permet à chaque joueur de saisir ses pronostics (Top 10 Qualifs, 
    npm run dev
    ```
    L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
+
+## 👥 Joueurs
+
+La liste des joueurs (nom, couleur, accords au féminin) se trouve dans [`src/lib/players.ts`](src/lib/players.ts) : c'est le seul fichier à modifier pour ajouter un joueur. Pour en renommer un, pensez aussi à mettre à jour `player_name` dans la table `predictions`, sinon ses anciens pronostics ne lui seront plus rattachés.
+
+## 📝 Évolutions
+
+### 2026-11-17
+
+- Tableau de bord : après « Enregistrer les résultats », la page se met à jour sans repasser par l'écran de chargement, et l'historique des GP affiche tout de suite les paris validés.
+- Historique des GP : les flèches suivent le calendrier (du premier au dernier GP) au lieu d'aller de 1 à 22 en dur.
+- Joueurs : nom, couleur et accords au féminin regroupés dans `src/lib/players.ts`.
+- Nettoyage : suppression du code et des styles inutilisés, et des dépendances `dotenv`, `@supabase/ssr`, `clsx` et `tailwind-merge`.
+- README : l'installation renvoie vers `supabase_schema.sql` au lieu d'une copie du SQL qui n'était plus à jour.
